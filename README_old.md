@@ -84,26 +84,10 @@ To reproduce paper results, run:
  python -m src.visualize.text2motion ./exps/paper-model/checkpoint_0100.pth.tar --input_file assets/paper_texts.txt
 ```
 
-To run MotionCLIP on your own texts, create a text file, with each line depicts a different text input (see `paper_texts.txt` as a reference) and point to it with `--input_file` instead.
+To run MotionCLIP with your own texts, create a text file, with each line depicts a different text input (see `paper_texts.txt` as a reference) and point to it with `--input_file` instead.
 
 
-### 2. Motion-to-Text
-
-To retrieve text descriptions from motions using CLIP, run:
-```bash
-python -m src.visualize.motion2text ./exps/paper-model/checkpoint_0100.pth.tar --input_file assets/paper_motion2text.csv
-```
-
-This feature:
-* Retrieves motions from the dataset based on their textual labels
-* Encodes the motions into latent features using the MotionCLIP encoder
-* Uses CLIP to find the most similar text descriptions from a comprehensive vocabulary
-* Prints the top-5 predicted text descriptions with confidence scores
-
-To run with your own motions, create a CSV file with a `motion_text` column containing textual labels of motions available in the dataset (see `paper_motion2text.csv` as a reference).
-
-
-### 3. Vector Editing
+### 2. Vector Editing
 
 To reproduce paper results, run:
 ```bash
@@ -116,7 +100,7 @@ To gain the input motions, we support two modes:
 
 To run MotionCLIP on your own editing, create a csv file, with each line depicts a different edit (see `paper_edits.csv` as a reference) and point to it with `--input_file` instead.
 
-### 4. Interpolation
+### 3. Interpolation
 
 To reproduce paper results, run:
 ```bash
@@ -128,7 +112,7 @@ To gain the input motions, we use the `data` mode described earlier.
 To run MotionCLIP on your own interpolations, create a csv file, with each line depicts a different interpolation (see `paper_interps.csv` as a reference) and point to it with `--input_file` instead.
 
 
-### 5. Action Recognition
+### 4. Action Recognition
 
 For action recognition, we use a model trained on text class names. [Download](https://drive.google.com/file/d/1koQMhpqmoffIB0C0P99a8l23YLGfthJ4/view?usp=sharing) and place it at `./exps/classes-model`.
  

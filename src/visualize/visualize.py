@@ -473,3 +473,105 @@ def encode_motions(model, motions, device):
     return model.encoder({'x': motions,
                           'y': torch.zeros(motions.shape[0], dtype=int, device=device),
                           'mask': model.lengths_to_mask(torch.ones(motions.shape[0], dtype=int, device=device) * 60)})["mu"]
+
+
+def viz_motion2text(model, datasets, motion_csv, epoch, params, folder):
+    """ Retrieve motions, encode them, and find closest text descriptions using CLIP """
+    
+    # visualize with joints3D
+    model.outputxyz = True
+    
+    print(f"Motion-to-Text conversion (epoch {epoch})")
+    
+    motion_collection = get_motion_text_mapping(datasets)
+    device = params['device']
+    
+    # Define a comprehensive vocabulary of action descriptions
+    text_vocabulary = [
+        "walk", "run", "jump", "sit", "stand", "kick", "punch", "throw",
+        "high jump", "sit down", "sitting", "run fast", "walk slowly",
+        "walk forward", "walk backward", "squat", "crouch", "kneel",
+        "dance", "turn around", "spin", "cartwheel", "roll", "crawl",
+        "climb", "stretch", "bend", "wave", "clap", "reach", "grab",
+        "push", "pull", "lift", "carry", "drink", "eat", "write",
+        "bow", "salute", "point", "shake hands", "hug", "boxing",
+        "swimming motion", "yoga pose", "exercise", "jumping jacks",
+        "lunges", "side step", "hop", "skip", "march", "jog",
+        "sprint", "backflip", "handstand", "lie down", "fall",
+        "get up", "kneel down", "stand up", "crouch down",
+        "high jump", "long jump", "kick ball", "throw ball",
+        "catch ball", "dribble", "shoot", "swing",
+        "bowling", "golf swing", "tennis serve", "baseball swing"
+    ]
+    
+    # Encode all text descriptions with CLIP
+    print(f"Encoding {len(text_vocabulary)} text descriptions...")
+    text_tokens = clip.tokenize(text_vocabulary).to(device)
+    with torch.no_grad():
+        text_features = model.clip_model.encode_text(text_tokens).float()
+        text_features_norm = text_features / text_features.norm(dim=-1, keepdim=True)
+    
+    print("\n" + "="*80)
+    print("MOTION-TO-TEXT RESULTS")
+    print("="*80 + "\n")
+    
+    results = []
+    
+    for line in motion_csv:
+        motion_text = line['motion_text']
+        
+        print(f"Input motion label: '{motion_text}'")
+        
+        # Retrieve motion from dataset
+        if motion_text not in motion_collection:
+            print(f"  ⚠ Motion '{motion_text}' not found in dataset, skipping...")
+            print()
+            continue
+        
+        motions = retrieve_motions(datasets, motion_collection, [motion_text], device)
+        
+        # Encode motion to latent features
+        with torch.no_grad():
+            motion_features = encode_motions(model, motions, device)
+            motion_features_norm = motion_features / motion_features.norm(dim=-1, keepdim=True)
+        
+        # Compute similarity with all text descriptions
+        with torch.no_grad():
+            similarity = (100.0 * motion_features_norm @ text_features_norm.t()).softmax(dim=-1)
+        
+        # Get top-5 predictions
+        values, indices = similarity[0].topk(5)
+        
+        print(f"  Top-5 predicted text descriptions:")
+        for rank, (idx, score) in enumerate(zip(indices, values), 1):
+            predicted_text = text_vocabulary[idx.item()]
+            confidence = score.item() * 100
+            print(f"    {rank}. '{predicted_text}' (confidence: {confidence:.2f}%)")
+        
+        results.append({
+            'input': motion_text,
+            'top1': text_vocabulary[indices[0].item()],
+            'confidence': values[0].item() * 100
+        })
+        print()
+    
+    print("="*80)
+    print("SUMMARY")
+    print("="*80)
+    for res in results:
+        print(f"'{res['input']}' → '{res['top1']}' ({res['confidence']:.2f}% confidence)")
+    print("="*80 + "\n")
+    
+    # Save results to file
+    f_name = os.path.basename(params['input_file']).replace('.csv', '')
+    results_path = os.path.join(folder, f'motion2text_{f_name}_results.txt')
+    with open(results_path, 'w') as f:
+        f.write("MOTION-TO-TEXT CONVERSION RESULTS\n")
+        f.write("="*80 + "\n\n")
+        for res in results:
+            f.write(f"Input: '{res['input']}'\n")
+            f.write(f"Predicted: '{res['top1']}'\n")
+            f.write(f"Confidence: {res['confidence']:.2f}%\n\n")
+    
+    print(f"Results saved to: {results_path}")
+
