@@ -123,8 +123,10 @@ def plot_3d_motion(motion, length, save_path, params, title="", interval=50, pal
         kinematic_tree = None
 
     def update(index):
-        ax.lines = []
-        ax.collections = []
+        while ax.lines:
+            ax.lines[0].remove()
+        while ax.collections:
+            ax.collections[0].remove()
         if kinematic_tree is not None:
             for chain, color in zip(kinematic_tree, colors):
                 ax.plot(motion[chain, 0, index],

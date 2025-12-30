@@ -4,6 +4,11 @@ import src.utils.rotation_conversions as geometry
 from .smpl import SMPL, JOINTSTYPE_ROOT
 from src.models.tools.jointstypes import JOINTSTYPES
 
+# FIX: add a workaround to load smplx models with chumpy_fork
+import sys
+import chumpy_fork
+# Make chumpy_fork available as 'chumpy' for pickle to find
+sys.modules['chumpy'] = chumpy_fork
 
 class Rotation2xyz:
     def __init__(self, device):
