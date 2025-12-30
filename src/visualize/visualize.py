@@ -482,6 +482,7 @@ def viz_motion2text(model, datasets, motion_csv, epoch, params, folder):
     model.outputxyz = True
     
     print(f"Motion-to-Text conversion (epoch {epoch})")
+    figname = params["figname"].format(epoch)
     
     motion_collection = get_motion_text_mapping(datasets)
     device = params['device']
@@ -516,6 +517,9 @@ def viz_motion2text(model, datasets, motion_csv, epoch, params, folder):
     print("="*80 + "\n")
     
     results = []
+    all_motions = []
+    all_labels = []
+    all_lengths = []
     
     for line in motion_csv:
         motion_text = line['motion_text']
@@ -543,16 +547,29 @@ def viz_motion2text(model, datasets, motion_csv, epoch, params, folder):
         values, indices = similarity[0].topk(5)
         
         print(f"  Top-5 predicted text descriptions:")
+        predicted_texts = []
         for rank, (idx, score) in enumerate(zip(indices, values), 1):
             predicted_text = text_vocabulary[idx.item()]
             confidence = score.item() * 100
             print(f"    {rank}. '{predicted_text}' (confidence: {confidence:.2f}%)")
+            predicted_texts.append(f"{rank}. {predicted_text} ({confidence:.1f}%)")
+        
+        top1_text = text_vocabulary[indices[0].item()]
+        top1_conf = values[0].item() * 100
         
         results.append({
             'input': motion_text,
-            'top1': text_vocabulary[indices[0].item()],
-            'confidence': values[0].item() * 100
+            'top1': top1_text,
+            'confidence': top1_conf
         })
+        
+        # Store motion for visualization
+        all_motions.append(motions)
+        # Create label with input and top prediction
+        label = f"{motion_text}\n→ {top1_text}\n({top1_conf:.1f}%)"
+        all_labels.append(label)
+        all_lengths.append(torch.tensor([params['num_frames']], device=device))
+        
         print()
     
     print("="*80)
@@ -562,7 +579,7 @@ def viz_motion2text(model, datasets, motion_csv, epoch, params, folder):
         print(f"'{res['input']}' → '{res['top1']}' ({res['confidence']:.2f}% confidence)")
     print("="*80 + "\n")
     
-    # Save results to file
+    # Save text results to file
     f_name = os.path.basename(params['input_file']).replace('.csv', '')
     results_path = os.path.join(folder, f'motion2text_{f_name}_results.txt')
     with open(results_path, 'w') as f:
@@ -574,4 +591,42 @@ def viz_motion2text(model, datasets, motion_csv, epoch, params, folder):
             f.write(f"Confidence: {res['confidence']:.2f}%\n\n")
     
     print(f"Results saved to: {results_path}")
+    
+    # Generate visualization if we have motions
+    if len(all_motions) > 0:
+        print("\nGenerating motion visualizations...")
+        
+        # Concatenate all motions
+        all_motions_tensor = torch.cat(all_motions, dim=0)
+        all_lengths_tensor = torch.cat(all_lengths, dim=0)
+        
+        # Convert motions to xyz coordinates
+        model.eval()
+        with torch.no_grad():
+            mask = model.lengths_to_mask(all_lengths_tensor)
+            output_xyz = model.rot2xyz(all_motions_tensor, mask)
+        
+        # Prepare visualization data structure
+        h = len(all_motions)
+        w = 1
+        
+        visualization = {
+            'output_xyz': output_xyz.reshape(h, w, *output_xyz.shape[1:]),
+            'lengths': all_lengths_tensor.reshape(h, w),
+            'y': np.array(all_labels).reshape(h, w)
+        }
+        
+        # Setup paths
+        finalpath = os.path.join(folder, f'motion2text_{f_name}_' + figname + ".gif")
+        tmp_path = os.path.join(folder, f"motion2text_subfigures_{figname}")
+        os.makedirs(tmp_path, exist_ok=True)
+        
+        # Generate videos
+        print("Generate the videos..")
+        frames = generate_by_video({}, {}, visualization,
+                                   lambda x: str(x), params, w, h, tmp_path, mode='text')
+        
+        print(f"Writing video [{finalpath}]")
+        imageio.mimsave(finalpath, frames, fps=params["fps"])
+        print(f"Visualization saved to: {finalpath}")
 
