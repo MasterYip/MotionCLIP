@@ -127,10 +127,14 @@ def example_4_encode_motion():
     # Create dummy motion input (normally you'd load from dataset)
     # Shape: [batch_size, num_joints, num_features, num_frames]
     batch_size = 2
-    num_joints = 24 if cfg.model.jointstype == 'vertices' else 18
-    num_features = 6 if cfg.model.pose_rep == 'rot6d' else 9  # rot6d or rotmat
+    
+    # Get the actual njoints from the model (accounts for glob adding extra joint)
+    # For vertices with glob=True: 24 base + 1 global = 25 joints
+    num_joints = model.encoder.njoints
+    num_features = model.encoder.nfeats
     num_frames = cfg.model.num_frames
     
+    print(f"Creating dummy motion with shape: [{batch_size}, {num_joints}, {num_features}, {num_frames}]")
     dummy_motion = torch.randn(batch_size, num_joints, num_features, num_frames).to(device)
     
     # Encode to latent space
