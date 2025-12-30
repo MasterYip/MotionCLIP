@@ -129,6 +129,41 @@ def _config_to_parameters(cfg, device):
     # Model parameters
     if 'model' in cfg:
         model_cfg = cfg.model
+        pose_rep = model_cfg.get('pose_rep', 'rot6d')
+        jointstype = model_cfg.get('jointstype', 'vertices')
+        
+        # Compute njoints and nfeats based on pose representation
+        # These are dataset-dependent but we use standard values
+        if jointstype == 'vertices':
+            njoints = 24  # SMPL vertices
+        elif jointstype in ['a2m', 'a2mpl']:
+            njoints = 18  # action2motion joints
+        elif jointstype == 'smpl':
+            njoints = 24  # SMPL joints
+        elif jointstype == 'vibe':
+            njoints = 21  # VIBE joints
+        else:
+            njoints = 24  # default
+        
+        # Add one joint for global rotation if glob=True
+        glob = model_cfg.get('glob', True)
+        if glob:
+            njoints += 1  # Add global rotation joint (e.g., 24 -> 25)
+        
+        # Number of features per joint depends on pose representation
+        if pose_rep == 'rot6d':
+            nfeats = 6  # 6D rotation
+        elif pose_rep == 'rotmat':
+            nfeats = 9  # 3x3 rotation matrix
+        elif pose_rep == 'rotquat':
+            nfeats = 4  # quaternion
+        elif pose_rep == 'rotvec':
+            nfeats = 3  # rotation vector
+        elif pose_rep == 'xyz':
+            nfeats = 3  # xyz coordinates
+        else:
+            nfeats = 6  # default to rot6d
+        
         parameters.update({
             'archiname': model_cfg.get('archiname', 'transformer'),
             'modeltype': model_cfg.get('modeltype', 'cvae'),
@@ -136,8 +171,14 @@ def _config_to_parameters(cfg, device):
             'latent_dim': model_cfg.get('latent_dim', 512),
             'num_layers': model_cfg.get('num_layers', 8),
             'num_frames': model_cfg.get('num_frames', 60),
-            'pose_rep': model_cfg.get('pose_rep', 'rot6d'),
-            'jointstype': model_cfg.get('jointstype', 'vertices'),
+            'num_heads': model_cfg.get('num_heads', 4),
+            'ff_size': model_cfg.get('ff_size', 1024),
+            'dropout': model_cfg.get('dropout', 0.1),
+            'pose_rep': pose_rep,
+            'jointstype': jointstype,
+            'njoints': njoints,
+            'nfeats': nfeats,
+            'num_classes': 1,  # Not used in inference mode
             'glob': model_cfg.get('glob', True),
             'glob_rot': model_cfg.get('glob_rot', [3.141592653589793, 0, 0]),
             'translation': model_cfg.get('translation', True),

@@ -1,5 +1,5 @@
-# MotionCLIP Model Configuration
-# This file contains model-specific parameters only
+# MotionCLIP Model Configuration (Paper Model)
+# Hierarchical configuration format
 
 model:
   # Architecture
@@ -11,30 +11,27 @@ model:
   latent_dim: 512
   num_layers: 8
   num_frames: 60
-  num_heads: 4
-  ff_size: 1024
-  dropout: 0.1
   
   # Motion representation
-  pose_rep: rot6d  # rotation representation: rot6d, rotmat, etc.
-  jointstype: vertices  # vertices, a2m, smpl, vibe, a2mpl
+  pose_rep: rot6d
+  jointstype: vertices
   
   # Global motion parameters
   glob: true
-  glob_rot: [3.141592653589793, 0, 0]  # pi, 0, 0
+  glob_rot: [3.141592653589793, 0, 0]
   translation: true
   vertstrans: false
   align_pose_frontview: false
   
   # Encoder/Decoder
   normalize_encoder_output: false
-  outputxyz: true  # will be set based on losses
+  outputxyz: true
   
   # Loss functions
   losses:
-    - rc          # reconstruction loss
-    - rcxyz       # reconstruction loss in xyz space
-    - vel         # velocity loss
+    - rc
+    - rcxyz
+    - vel
   
   lambdas:
     rc: 100.0
@@ -46,8 +43,8 @@ model:
 # CLIP Model Configuration
 clip:
   model_name: "ViT-B/32"
-  training: ""  # empty string means frozen, "text", "image", or "text_image"
-  layers: 12    # number of transformer layers to use
+  training: ""  # frozen CLIP
+  layers: 12
   
   # CLIP loss configuration
   text_losses:
@@ -70,5 +67,6 @@ clip:
   map_images: false
 
 # Device configuration
-device: cuda  # cuda or cpu
+device: cuda
 cuda: true
+
