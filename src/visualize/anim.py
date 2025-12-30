@@ -54,7 +54,8 @@ def load_anim(path, timesize=None):
     return alldata
 
 
-def plot_3d_motion(motion, length, save_path, params, title="", interval=50, palette=None):
+def plot_3d_motion(motion, length, save_path, params, title="", interval=50, palette=None,
+                   view_point=(-90, -90)):
     import matplotlib
     import matplotlib.pyplot as plt
     from mpl_toolkits.mplot3d import Axes3D  # noqa: F401
@@ -79,7 +80,7 @@ def plot_3d_motion(motion, length, save_path, params, title="", interval=50, pal
         ax.set_ylim(-0.7, 0.7)
         ax.set_zlim(-0.7, 0.7)
 
-        ax.view_init(azim=-90, elev=110)
+        ax.view_init(azim=view_point[0], elev=view_point[1])
         # ax.set_axis_off()
         ax.xaxis._axinfo["grid"]['color'] = (0.5, 0.5, 0.5, 0.25)
         ax.yaxis._axinfo["grid"]['color'] = (0.5, 0.5, 0.5, 0.25)
@@ -102,8 +103,8 @@ def plot_3d_motion(motion, length, save_path, params, title="", interval=50, pal
         motion = motion.numpy()
 
     # invert axis
-    motion[:, 1, :] = -motion[:, 1, :]
-    motion[:, 2, :] = -motion[:, 2, :]
+    # motion[:, 1, :] = -motion[:, 1, :]
+    # motion[:, 2, :] = -motion[:, 2, :]
     # this hack is not needed for amass
 
     """
