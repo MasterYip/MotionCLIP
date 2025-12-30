@@ -502,7 +502,7 @@ def viz_motion2text(model, datasets, motion_csv, epoch, params, folder):
         "get up", "kneel down", "stand up", "crouch down",
         "high jump", "long jump", "kick ball", "throw ball",
         "catch ball", "dribble", "shoot", "swing",
-        "bowling", "golf swing", "tennis serve", "baseball swing"
+        "bowling", "golf swing", "tennis serve", "baseball swing", "Riding a bike"
     ]
     
     # Encode all text descriptions with CLIP
