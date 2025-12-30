@@ -1,6 +1,10 @@
 from ..datasets.get_dataset import get_datasets
 from ..models.get_model import get_model as get_gen_model
 import clip
+import torch
+from omegaconf import OmegaConf
+import os
+
 
 def get_model_and_data(parameters, split="train"):
 
@@ -26,3 +30,149 @@ def get_model_and_data(parameters, split="train"):
     datasets = get_datasets(parameters, clip_preprocess, split)
     model = get_gen_model(parameters, clip_model)
     return model, datasets
+
+
+def get_motion_clip(config_path=None, checkpoint_path=None, device="cuda"):
+    """
+    Load MotionCLIP model with clean Hydra-based configuration.
+    
+    Args:
+        config_path: Path to config YAML file. If None, uses default config.
+        checkpoint_path: Path to model checkpoint file (.pth.tar). If None, returns untrained model.
+        device: Device to load model on ('cuda' or 'cpu')
+    
+    Returns:
+        model: MotionCLIP model
+        cfg: Configuration object (OmegaConf)
+    
+    Example:
+        # Load with default config
+        model, cfg = get_motion_clip()
+        
+        # Load with custom config and checkpoint
+        model, cfg = get_motion_clip(
+            config_path='./exps/paper-model/opt.yaml',
+            checkpoint_path='./exps/paper-model/checkpoint_0100.pth.tar'
+        )
+    """
+    # Load configuration
+    if config_path is None:
+        # Use default config from src/config
+        default_config_path = os.path.join(
+            os.path.dirname(os.path.dirname(__file__)),
+            'config', 'default_cfg.yaml'
+        )
+        cfg = OmegaConf.load(default_config_path)
+    else:
+        # Load custom config
+        cfg = OmegaConf.load(config_path)
+    
+    # Set device
+    if isinstance(device, int):
+        device_str = f"cuda:{device}"
+    else:
+        device_str = device
+    
+    # Convert config to parameters dict for backward compatibility
+    parameters = _config_to_parameters(cfg, device_str)
+    
+    # Load CLIP model
+    clip_model_name = parameters.get('clip_model_name', 'ViT-B/32')
+    clip_model, _ = clip.load(clip_model_name, device=device_str, jit=False)
+    clip.model.convert_weights(clip_model)
+    
+    # Configure CLIP layers if specified
+    clip_training = parameters.get('clip_training', '')
+    clip_num_layers = parameters.get('clip_layers', 12)
+    
+    for domain in clip_training.split('_'):
+        if domain == 'text':
+            clip_model.initialize_parameters()
+            clip_model.transformer.resblocks = clip_model.transformer.resblocks[:clip_num_layers]
+        if domain == 'image':
+            clip_model.initialize_parameters()
+            clip_model.visual.transformer = clip_model.transformer.resblocks[:clip_num_layers]
+    
+    # Freeze CLIP if not training
+    if clip_training == '':
+        clip_model.eval()
+        for p in clip_model.parameters():
+            p.requires_grad = False
+    
+    # Create MotionCLIP model
+    model = get_gen_model(parameters, clip_model)
+    
+    # Load checkpoint if provided
+    if checkpoint_path is not None:
+        print(f"Loading checkpoint from {checkpoint_path}")
+        state_dict = torch.load(checkpoint_path, map_location=device_str)
+        
+        # Handle different checkpoint formats
+        if 'model' in state_dict:
+            model_state = state_dict['model']
+        else:
+            model_state = state_dict
+        
+        # Load weights without CLIP (CLIP is frozen)
+        from ..utils.misc import load_model_wo_clip
+        load_model_wo_clip(model, state_dict)
+        print("Checkpoint loaded successfully")
+    
+    model.eval()
+    return model, cfg
+
+
+def _config_to_parameters(cfg, device):
+    """Convert OmegaConf config to flat parameters dict for backward compatibility."""
+    parameters = {}
+    
+    # Model parameters
+    if 'model' in cfg:
+        model_cfg = cfg.model
+        parameters.update({
+            'archiname': model_cfg.get('archiname', 'transformer'),
+            'modeltype': model_cfg.get('modeltype', 'cvae'),
+            'activation': model_cfg.get('activation', 'gelu'),
+            'latent_dim': model_cfg.get('latent_dim', 512),
+            'num_layers': model_cfg.get('num_layers', 8),
+            'num_frames': model_cfg.get('num_frames', 60),
+            'pose_rep': model_cfg.get('pose_rep', 'rot6d'),
+            'jointstype': model_cfg.get('jointstype', 'vertices'),
+            'glob': model_cfg.get('glob', True),
+            'glob_rot': model_cfg.get('glob_rot', [3.141592653589793, 0, 0]),
+            'translation': model_cfg.get('translation', True),
+            'vertstrans': model_cfg.get('vertstrans', False),
+            'align_pose_frontview': model_cfg.get('align_pose_frontview', False),
+            'normalize_encoder_output': model_cfg.get('normalize_encoder_output', False),
+            'outputxyz': model_cfg.get('outputxyz', True),
+        })
+        
+        # Losses and lambdas
+        if 'losses' in model_cfg:
+            parameters['losses'] = list(model_cfg.losses)
+        if 'lambdas' in model_cfg:
+            parameters['lambdas'] = dict(model_cfg.lambdas)
+    
+    # CLIP parameters
+    if 'clip' in cfg:
+        clip_cfg = cfg.clip
+        parameters.update({
+            'clip_model_name': clip_cfg.get('model_name', 'ViT-B/32'),
+            'clip_training': clip_cfg.get('training', ''),
+            'clip_layers': clip_cfg.get('layers', 12),
+            'clip_text_losses': list(clip_cfg.get('text_losses', ['cosine'])),
+            'clip_image_losses': list(clip_cfg.get('image_losses', ['cosine'])),
+            'clip_mappers_type': clip_cfg.get('mappers_type', 'no_mapper'),
+            'clip_map_text': clip_cfg.get('map_text', False),
+            'clip_map_images': clip_cfg.get('map_images', False),
+        })
+        
+        if 'lambdas' in clip_cfg:
+            parameters['clip_lambdas'] = OmegaConf.to_container(clip_cfg.lambdas, resolve=True)
+    
+    # Device
+    parameters['device'] = device
+    parameters['cuda'] = 'cuda' in device
+    
+    return parameters
+

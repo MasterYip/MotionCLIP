@@ -1,0 +1,71 @@
+# MotionCLIP Model Configuration
+# This file contains model-specific parameters only
+
+model:
+  # Architecture
+  archiname: transformer
+  modeltype: cvae
+  activation: gelu
+  
+  # Transformer dimensions
+  latent_dim: 512
+  num_layers: 8
+  num_frames: 60
+  
+  # Motion representation
+  pose_rep: rot6d  # rotation representation: rot6d, rotmat, etc.
+  jointstype: vertices  # vertices, a2m, smpl, vibe, a2mpl
+  
+  # Global motion parameters
+  glob: true
+  glob_rot: [3.141592653589793, 0, 0]  # pi, 0, 0
+  translation: true
+  vertstrans: false
+  align_pose_frontview: false
+  
+  # Encoder/Decoder
+  normalize_encoder_output: false
+  outputxyz: true  # will be set based on losses
+  
+  # Loss functions
+  losses:
+    - rc          # reconstruction loss
+    - rcxyz       # reconstruction loss in xyz space
+    - vel         # velocity loss
+  
+  lambdas:
+    rc: 100.0
+    rcxyz: 100.0
+    vel: 100.0
+    velxyz: 1.0
+    kl: 0.0
+
+# CLIP Model Configuration
+clip:
+  model_name: "ViT-B/32"
+  training: ""  # empty string means frozen, "text", "image", or "text_image"
+  layers: 12    # number of transformer layers to use
+  
+  # CLIP loss configuration
+  text_losses:
+    - cosine
+  image_losses:
+    - cosine
+  
+  lambdas:
+    text:
+      cosine: 1.0
+      ce: 1.0
+      mse: 1.0
+    image:
+      cosine: 1.0
+      ce: 1.0
+      mse: 1.0
+  
+  mappers_type: no_mapper
+  map_text: false
+  map_images: false
+
+# Device configuration
+device: cuda  # cuda or cpu
+cuda: true
