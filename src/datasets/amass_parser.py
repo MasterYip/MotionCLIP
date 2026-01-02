@@ -100,7 +100,7 @@ def read_data(folder, split_name,dataset_name, target_fps, max_fps_dist, joints_
     # instance SMPL model
     print('Loading Body Models')
     body_models = {
-        'neutral': BodyModel(config.SMPLH_AMASS_MODEL_PATH, num_betas=config.NUM_BETAS).to(comp_device),
+        'neutral': BodyModel(config.SMPLH_AMASS_MODEL_PATH, num_betas=config.NUM_BETAS, model_type="smplh").to(comp_device),
     }
     print('DONE! - Loading Body Models')
 

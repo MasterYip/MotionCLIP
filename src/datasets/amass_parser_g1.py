@@ -39,18 +39,11 @@ action2motion_joints = [8, 1, 2, 3, 4, 5, 6, 7, 0, 9, 10, 11, 12, 13, 14, 21, 24
 
 
 def get_joints_to_use(args):
-    # joints_to_use = np.array([
-    #     0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
-    #     11, 12, 13, 14, 15, 16, 17, 18, 19,
-    #     20, 21, 22, 37
-    # ])  # 23 joints + global_orient # 21 base joints + left_index1(22) + right_index1 (37)
-    # return np.arange(0, len(smpl_utils.SMPLH_JOINT_NAMES) * 3).reshape((-1, 3))[joints_to_use].reshape(-1)
-    joints_to_use = np.array([
-        0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
-        11, 12, 13, 14, 15, 16, 17, 18, 19,
-        20, 21, 22, 23, 24, 25, 26, 27, 28
-    ])  # 23 joints + global_orient # 21 base joints + left_index1(22) + right_index1 (37)
-    return np.arange(0, 29)
+    # For G1 robot: use all DOF positions
+    # The G1 retargeted data has dof_positions which represent the robot's joint angles
+    # We use all available DOFs (typically 29 for G1)
+    # This can be adjusted based on the actual dof_names in the data
+    return None  # Will use all DOFs from the data
 
 framerate_hist = []
 
@@ -103,12 +96,10 @@ def read_data(folder, split_name,dataset_name, target_fps, max_fps_dist, joints_
         'action_cat': []
     }
 
-    # instance SMPL model
-    print('Loading Body Models')
-    body_models = {
-        'neutral': BodyModel(config.SMPLH_AMASS_MODEL_PATH, model_type="smpl", num_betas=config.NUM_BETAS).to(comp_device),
-    }
-    print('DONE! - Loading Body Models')
+    # G1 retargeted data doesn't need SMPL body models
+    # The data already contains robot joint positions and body positions
+    body_models = None
+    print('Processing G1 retargeted data (no SMPL model needed)')
 
     clip_images_path = clip_images_dir
     assert os.path.isdir(clip_images_path)
@@ -166,7 +157,8 @@ def read_single_sequence(split_name, dataset_name, folder, seq_name, body_models
 
             data = np.load(fname)
             duration_t = babel_dict['dur']
-            fps = data['dof_positions'].shape[0] / duration_t
+            # G1 data has 'fps' key directly
+            fps = float(data['fps']) if 'fps' in data else data['dof_positions'].shape[0] / duration_t
 
             # Seq. labels
             seq_raw_labels, seq_proc_label, seq_act_cat = [], [], []
@@ -205,16 +197,20 @@ def read_single_sequence(split_name, dataset_name, folder, seq_name, body_models
                     print('Will not sample [{}]fps seq with sampling_freq [{}], since target_fps=[{}], max_fps_dist=[{}]'
                           .format(mocap_framerate, sampling_freq, target_fps, max_fps_dist))
                     continue
-                # pose = data['dof_positions'][:, joints_to_use]
-                pose = data['dof_positions'][0::sampling_freq, joints_to_use]
-                pose_all = data['dof_positions'][0::sampling_freq, :]
+                # For G1: use all DOF positions (joints_to_use is None)
+                pose = data['dof_positions'][0::sampling_freq, :]
+                pose_all = pose  # Same as pose for G1
+                # Get body positions for 3D joint trajectories
+                body_pos = data['body_positions'][0::sampling_freq, :] if 'body_positions' in data else None
                 frame_raw_text_labels = frame_raw_text_labels[0::sampling_freq]
                 frame_proc_text_labels = frame_proc_text_labels[0::sampling_freq]
+                frame_action_cat = frame_action_cat[0::sampling_freq]
 
             else:
                 # don't sample
-                pose = data['dof_positions'][:, joints_to_use]
-                pose_all = data['dof_positions'][:, :]
+                pose = data['dof_positions'][:, :]
+                pose_all = pose  # Same as pose for G1
+                body_pos = data['body_positions'][:, :] if 'body_positions' in data else None
 
             if pose.shape[0] < 60:
                 continue
@@ -226,20 +222,15 @@ def read_single_sequence(split_name, dataset_name, folder, seq_name, body_models
                 joints = None
                 images = None
             else:
-                root_orient = torch.Tensor(pose_all[:, :(smpl_utils.JOINTS_SART_INDEX * 3)]).to(comp_device)
-                pose_hand = torch.Tensor(pose_all[:, (smpl_utils.L_HAND_START_INDEX * 3):]).to(comp_device)
-                pose_body = torch.Tensor(pose_all[:, (smpl_utils.JOINTS_SART_INDEX * 3):(
-                            smpl_utils.L_HAND_START_INDEX * 3)]).to(comp_device)
-                body_model = body_models['neutral']
-
-                body_motion = body_model(pose_body=pose_body, pose_hand=pose_hand, root_orient=root_orient)
-                joints = c2c(body_motion.Jtr)  # [seq_len, 52, 3]
-                joints = joints[:, action2motion_joints]  # [seq_len, 18, 3]
+                # For G1: use body_positions directly as 3D joint positions
+                # body_positions shape: [seq_len, num_bodies, 3]
+                # This represents the 3D positions of the robot's bodies/links
+                joints = body_pos  # [seq_len, num_bodies, 3]
 
                 images = None
                 images_path = None
                 if clip_images_path is not None:
-                    images_path = [os.path.join(clip_images_path, f) for f in os.listdir(clip_images_path) if f.startswith(vid_name[0]) and f.endswith('.png')]
+                    images_path = [os.path.join(clip_images_path, f) for f in os.listdir(clip_images_path) if f.startswith(vid_name[0][:-9]) and f.endswith('.png')]
                     images_path.sort(key=lambda x: int(x.replace('.png', '').split('frame')[-1]))
                     images_path = np.array(images_path)
                     images = [np.asarray(Image.open(im)) for im in images_path]
