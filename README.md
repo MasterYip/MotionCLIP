@@ -163,7 +163,8 @@ python -m src.train.train --clip_text_losses cosine --clip_image_losses cosine -
 --device 0 \
 --dataset amass \
 --datapath ./data/amass_db/amass_30fps_db.pt \
---folder ./exps/my-paper-model
+--folder ./exps/g1-model \
+--use_g1
 ```
 
 To reproduce `classes-model` run:

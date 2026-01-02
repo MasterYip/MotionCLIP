@@ -31,3 +31,4 @@ def add_dataset_options(parser):
     group.add_argument('--use_action_cat_as_text_labels', action='store_true', help="If true, dataset on loading will align root pose(rotation) to be the unit")
     group.add_argument('--only_60_classes', action='store_true', help="If true, dataset on loading will align root pose(rotation) to be the unit")
     group.add_argument('--use_only_15_classes', action='store_true', help="If true, We use only the 15 most frequence classes from BABEL")
+    group.add_argument('--use_g1', action='store_true', help="If true, use g1 retargeted amass data")

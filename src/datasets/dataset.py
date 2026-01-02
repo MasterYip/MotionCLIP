@@ -12,6 +12,25 @@ from src.utils.action_label_to_idx import action_label_to_idx
 
 
 class Dataset(torch.utils.data.Dataset):
+    """
+    Base dataset class for motion data.
+    
+    Supports both SMPL-based human poses and G1 robot DOF positions.
+    
+    Args:
+        num_frames: Number of frames per sequence (-1 for variable length)
+        sampling: Sampling strategy ('conseq', 'random_conseq', 'random')
+        sampling_step: Step size for consecutive sampling
+        split: Dataset split ('train', 'val', or 'test')
+        pose_rep: Pose representation ('xyz', 'rotvec', 'rotmat', 'rotquat', 'rot6d')
+                  Note: For G1 data, this is ignored and DOF positions are used directly
+        translation: Whether to include translation
+        glob: Whether to include global orientation
+        max_len: Maximum sequence length (-1 for no limit)
+        min_len: Minimum sequence length (-1 for no limit)
+        num_seq_max: Maximum number of sequences (-1 for no limit)
+        use_g1: If True, treats data as G1 DOF positions (default: False)
+    """
     def __init__(self, num_frames=1, sampling="conseq", sampling_step=1, split="train",
                  pose_rep="rot6d", translation=True, glob=True, max_len=-1, min_len=-1, num_seq_max=-1, **kwargs):
         self.num_frames = num_frames
@@ -24,6 +43,7 @@ class Dataset(torch.utils.data.Dataset):
         self.max_len = max_len
         self.min_len = min_len
         self.num_seq_max = num_seq_max
+        self.use_g1 = kwargs.get('use_g1', False)
 
         self.use_action_cat_as_text_labels = kwargs.get('use_action_cat_as_text_labels', False)
         self.only_60_classes = kwargs.get('only_60_classes', False)
@@ -102,6 +122,16 @@ class Dataset(torch.utils.data.Dataset):
 
     def _load(self, ind, frame_ix):
         pose_rep = self.pose_rep
+        
+        # For G1 retargeted data: use DOF positions directly without rotation conversion
+        if self.use_g1:
+            if getattr(self, "_load_dof_positions", None) is not None:
+                dof_pos = self._load_dof_positions(ind, frame_ix)
+                ret = to_torch(dof_pos)  # [seq_len, num_dofs]
+                # Reshape to [num_dofs, 1, seq_len] for consistency with other representations
+                ret = ret.unsqueeze(1).permute(1, 2, 0).contiguous()
+                return ret.float()
+        
         if pose_rep == "xyz" or self.translation:
             if getattr(self, "_load_joints3D", None) is not None:
                 # Locate the root joint of initial pose at origin

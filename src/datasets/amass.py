@@ -134,6 +134,28 @@ def get_trans_from_vibe(vibe, use_z=True):
 
 
 class AMASS(Dataset):
+    """
+    AMASS Dataset loader for both SMPL-based and G1 retargeted motion data.
+    
+    Supports two data types:
+    1. Standard AMASS: SMPL body model poses (rotation vectors)
+    2. G1 Retargeted: Robot DOF positions (joint angles)
+    
+    Args:
+        datapath: Path to dataset file (e.g., 'data/amass/amass_30fps_db.pt')
+        split: Dataset split ('train', 'vald', or 'test')
+        use_z: Whether to use z translation (default: 1)
+        use_g1: If True, loads G1 retargeted data instead of SMPL poses (default: False)
+        **kwargs: Additional arguments passed to parent Dataset class
+        
+    Example:
+        # Standard AMASS with SMPL poses
+        dataset = AMASS(datapath='./data/amass_db/amass_30fps_db.pt', split='train')
+        
+        # G1 retargeted data
+        dataset = AMASS(datapath='./data/g1_amass_db/g1_amass_30fps_db.pt', 
+                       split='train', use_g1=True, pose_rep='dof')
+    """
     dataname = "amass"
 
     def __init__(self, datapath="data/amass/amass_30fps_legacy_db.pt", split="train", use_z=1, **kwargs):
@@ -144,9 +166,10 @@ class AMASS(Dataset):
         super().__init__(**kwargs)
 
         self.dataname = "amass"
+        self.use_g1 = kwargs.get('use_g1', False)
 
         # FIXME - hardcoded:
-        self.rot_convention = 'legacy'
+        self.rot_convention = 'legacy' if not self.use_g1 else 'g1_dof'
         self.use_betas = False
         self.use_gender = False
         self.use_body_features = False
@@ -259,7 +282,15 @@ class AMASS(Dataset):
         joints3D = self._joints3d[ind][frame_ix]
         return joints3D
 
+    def _load_dof_positions(self, ind, frame_ix):
+        """Load DOF positions for G1 retargeted data."""
+        dof_pos = self._poses[ind][frame_ix, :]  # [seq_len, num_dofs]
+        return dof_pos
+
     def _load_rotvec(self, ind, frame_ix):
+        if self.use_g1:
+            # For G1, return DOF positions directly without reshaping
+            return self._poses[ind][frame_ix, :]
         pose = self._poses[ind][frame_ix, :].reshape(-1, ROT_CONVENTION_TO_ROT_NUMBER[self.rot_convention] + 1,
                                                      3)  # +1 for global orientation
         return pose
