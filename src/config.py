@@ -24,7 +24,22 @@ ROT_CONVENTION_TO_ROT_NUMBER = {
     'no_hands': 21,
     'full_hands': 51,
     'mitten_hands': 33,
+    'g1_dof': 29,  # G1 robot DOF count (adjust based on actual G1 configuration)
 }
 
 GENDERS = ['neutral', 'male', 'female']
 NUM_BETAS = 10
+
+# G1 Robot Configuration
+G1_NUM_DOFS = 29  # Total DOF count for G1 robot
+G1_NUM_BODIES = 20  # Number of bodies/links in G1 robot (adjust based on actual)
+G1_JOINT_NAMES = [
+    'root', 'left_hip_pitch', 'left_hip_roll', 'left_hip_yaw',
+    'left_knee', 'left_ankle_pitch', 'left_ankle_roll',
+    'right_hip_pitch', 'right_hip_roll', 'right_hip_yaw',
+    'right_knee', 'right_ankle_pitch', 'right_ankle_roll',
+    'torso', 'left_shoulder_pitch', 'left_shoulder_roll', 'left_shoulder_yaw',
+    'left_elbow', 'right_shoulder_pitch', 'right_shoulder_roll',
+    'right_shoulder_yaw', 'right_elbow',
+    # Add more based on actual G1 configuration
+]

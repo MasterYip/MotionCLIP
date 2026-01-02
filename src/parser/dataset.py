@@ -3,7 +3,8 @@ from src.datasets.dataset import POSE_REPS
 
 def add_dataset_options(parser):
     group = parser.add_argument_group('Dataset options')
-    group.add_argument("--dataset", required=True, help="Dataset to load", default='amass')
+    group.add_argument("--dataset", required=True, help="Dataset to load", 
+                      default='amass', choices=['amass', 'g1_amass'])
     group.add_argument("--datapath", help="Path of the data")
     group.add_argument("--num_frames", required=True, type=int, help="number of frames or -1 => whole, -2 => random between min_len and total")
     group.add_argument("--sampling", default="conseq", choices=["conseq", "random_conseq", "random"], help="sampling choices")
@@ -31,4 +32,4 @@ def add_dataset_options(parser):
     group.add_argument('--use_action_cat_as_text_labels', action='store_true', help="If true, dataset on loading will align root pose(rotation) to be the unit")
     group.add_argument('--only_60_classes', action='store_true', help="If true, dataset on loading will align root pose(rotation) to be the unit")
     group.add_argument('--use_only_15_classes', action='store_true', help="If true, We use only the 15 most frequence classes from BABEL")
-    group.add_argument('--use_g1', action='store_true', help="If true, use g1 retargeted amass data")
+    # group.add_argument('--use_g1', action='store_true', help="If true, use g1 retargeted amass data")

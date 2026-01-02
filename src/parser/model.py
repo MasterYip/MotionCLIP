@@ -16,6 +16,16 @@ def add_model_options(parser):
     group.add_argument('--vertstrans', dest='vertstrans', action='store_true', help="Training with vertex translations in the SMPL mesh")
     group.add_argument('--no-vertstrans', dest='vertstrans', action='store_false', help="Training without vertex translations in the SMPL mesh")
     group.set_defaults(vertstrans=False)
+    
+    # G1 robot specific options
+    group.add_argument('--use_g1', dest='use_g1', action='store_true', 
+                      help="Use G1 robot instead of SMPL (requires G1 retargeted dataset)")
+    group.add_argument('--no-use_g1', dest='use_g1', action='store_false', 
+                      help="Use SMPL (default)")
+    group.set_defaults(use_g1=False)
+    
+    group.add_argument("--g1_num_bodies", default=20, type=int,
+                      help="Number of bodies/joints in G1 (used when use_g1=True)")
 
     group.add_argument("--num_layers", default=8, type=int, help="Number of layers for GRU and transformer")
     group.add_argument("--activation", default="gelu", help="Activation for function for the transformer layers")

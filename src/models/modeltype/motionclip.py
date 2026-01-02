@@ -5,6 +5,7 @@ import torch.nn as nn
 import clip
 from ..tools.losses import get_loss_function
 from ..rotation2xyz import Rotation2xyz
+from ..g1_to_xyz import G1ToXyz
 
 loss_ce = nn.CrossEntropyLoss()
 loss_mse = nn.MSELoss()
@@ -34,6 +35,9 @@ class MOTIONCLIP(nn.Module):
         self.translation = translation
         self.jointstype = jointstype
         self.vertstrans = vertstrans
+        
+        # G1 robot support
+        self.use_g1 = kwargs.get('use_g1', False)
 
         self.clip_model = kwargs['clip_model']
         self.clip_training = kwargs.get('clip_training', False)
@@ -45,7 +49,12 @@ class MOTIONCLIP(nn.Module):
 
         self.losses = list(self.lambdas) + ["mixed"]
 
-        self.rotation2xyz = Rotation2xyz(device=self.device)
+        # Use G1ToXyz for G1 robot data, otherwise use SMPL Rotation2xyz
+        if self.use_g1:
+            self.rotation2xyz = G1ToXyz(device=self.device)
+        else:
+            self.rotation2xyz = Rotation2xyz(device=self.device)
+            
         self.param2xyz = {"pose_rep": self.pose_rep,
                           "glob_rot": self.glob_rot,
                           "glob": self.glob,
