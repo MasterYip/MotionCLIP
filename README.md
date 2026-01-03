@@ -54,6 +54,15 @@ To parse acording to the AMASS split (for all applications except action recogni
 ```bash
 python -m src.datasets.amass_parser --dataset_name amass
 ```
+G1 AMASS
+```bash
+python src/datasets/g1_amass_parser.py \
+    --input_dir ./data/amass \
+    --output_dir ./data/g1_amass_db \
+    --dataset_name amass \
+    --babel_dir ./data/babel_v1.0_release \
+    --target_fps 30
+```
 
 **Only if** you intend to use **Action Recognition**, run also:
 ```bash
