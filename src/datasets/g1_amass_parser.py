@@ -152,7 +152,7 @@ def read_single_sequence(split_name, dataset_name, folder, seq_name, target_fps,
             # Map to BABEL annotations
             # Convert G1 filename back to original AMASS filename
             # E.g., "D2-Wait1_poses_120_jpos.npz" -> "D2 - Wait 1_poses.npz"
-            original_action_name = action.replace(G1_FILE_SUFFIX, '.npz')
+            original_action_name = action[:-13] + '.npz'
             # Handle name transformations (G1 files may have different naming)
             # The retargeting process might change "D2 - Wait 1" to "D2-Wait1"
             # We need to match this to BABEL which uses original names
@@ -171,12 +171,10 @@ def read_single_sequence(split_name, dataset_name, folder, seq_name, target_fps,
             
             if babel_dict is None:
                 # Try with original naming convention
-                # original_seq_subj_action = seq_subj_action.replace(G1_FILE_SUFFIX.replace('.npz', ''), '')
-                original_seq_subj_action = seq_subj_action[:-8] + '.npz'
-                if original_seq_subj_action in fname_to_babel:
-                    babel_dict = fname_to_babel[original_seq_subj_action]
+                if seq_subj_action in fname_to_babel:
+                    babel_dict = fname_to_babel[seq_subj_action]
                 else:
-                    print(f"Not in BABEL: {original_seq_subj_action}")
+                    print(f"Not in BABEL: {seq_subj_action}")
                     continue
 
             if dataset_name == "babel":
@@ -285,7 +283,7 @@ def read_single_sequence(split_name, dataset_name, folder, seq_name, target_fps,
                 images_path = None
                 if clip_images_path is not None:
                     images_path = [os.path.join(clip_images_path, f) for f in os.listdir(clip_images_path) 
-                                 if f.startswith(vid_name[0]) and f.endswith('.png')]
+                                 if f.startswith(vid_name[0][:-9]) and f.endswith('.png')]
                     if images_path:
                         images_path.sort(key=lambda x: int(x.replace('.png', '').split('frame')[-1]))
                         images_path = np.array(images_path)
@@ -347,6 +345,7 @@ def get_babel_labels(babel_dir_path):
             seq_dict['split'] = file
             pose_file_to_babel[npz_path] = seq_dict
     print("DONE! - Loading babel labels")
+    print(pose_file_to_babel.keys())
     return pose_file_to_babel
 
 
@@ -357,7 +356,7 @@ if __name__ == '__main__':
     parser.add_argument('--output_dir', type=str, help='target directory', 
                        default='./data/g1_amass_db')
     parser.add_argument('--clip_images_dir', type=str, help='rendered images directory', 
-                       default=None)
+                       default='./data/render')
     parser.add_argument('--target_fps', type=int, choices=[10, 30, 60], default=30,
                        help='Target FPS (G1 data is at 30fps)')
     parser.add_argument('--quick_run', action='store_true', 

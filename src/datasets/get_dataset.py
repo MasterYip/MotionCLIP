@@ -1,4 +1,4 @@
-from .amass import AMASS
+from .amass import AMASS, G1AMASS
 
 def get_dataset(name="amass"):
     """
@@ -30,6 +30,7 @@ def get_datasets(parameters, clip_preprocess, split="train"):
     # Auto-enable G1 mode if dataset is g1_amass
     if parameters.get('dataset') == 'g1_amass':
         parameters['use_g1'] = True
+        DATA = G1AMASS
 
     if split == 'all':
         train = DATA(split='train', clip_preprocess=clip_preprocess, **parameters)
