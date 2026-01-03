@@ -78,9 +78,12 @@ def read_data(folder, split_name, dataset_name, target_fps, max_fps_dist, quick_
 
     db = {
         'vid_names': [],
-        'dof_positions': [],      # G1 joint angles (29,)
-        'body_positions': [],      # G1 body positions (30, 3)
-        'dof_velocities': [],      # G1 joint velocities (29,)
+        'dof_positions': [],              # G1 joint angles (29,)
+        'body_positions': [],              # G1 body positions (30, 3)
+        'dof_velocities': [],              # G1 joint velocities (29,)
+        'body_rotations': [],              # G1 body orientations (30, 4) quaternions
+        'body_linear_velocities': [],      # G1 body linear velocities (30, 3)
+        'body_angular_velocities': [],     # G1 body angular velocities (30, 3)
         'clip_images': [],
         'clip_pathes': [],
         'text_raw_labels': [],
@@ -129,6 +132,9 @@ def read_single_sequence(split_name, dataset_name, folder, seq_name, target_fps,
     dof_positions = []
     body_positions = []
     dof_velocities = []
+    body_rotations = []
+    body_linear_velocities = []
+    body_angular_velocities = []
     vid_names = []
     clip_images = []
     clip_pathes = []
@@ -156,12 +162,12 @@ def read_single_sequence(split_name, dataset_name, folder, seq_name, target_fps,
             
             # Try multiple name variations to match BABEL
             babel_dict = None
-            for name_variant in [seq_subj_action, 
-                                seq_subj_action.replace('_poses.npz', '_poses.npz'),
-                                seq_subj_action.replace('-', ' - ').replace('_poses', '_poses')]:
-                if name_variant in fname_to_babel:
-                    babel_dict = fname_to_babel[name_variant]
-                    break
+            # for name_variant in [seq_subj_action, 
+            #                     seq_subj_action.replace('_poses.npz', '_poses.npz'),
+            #                     seq_subj_action.replace('-', ' - ').replace('_poses', '_poses')]:
+            #     if name_variant in fname_to_babel:
+            #         babel_dict = fname_to_babel[name_variant]
+            #         break
             
             if babel_dict is None:
                 # Try with original naming convention
@@ -191,6 +197,9 @@ def read_single_sequence(split_name, dataset_name, folder, seq_name, target_fps,
             dof_pos = data['dof_positions']  # (T, 29)
             body_pos = data['body_positions']  # (T, 30, 3)
             dof_vel = data['dof_velocities'] if 'dof_velocities' in data else None  # (T, 29)
+            body_rot = data['body_rotations'] if 'body_rotations' in data else None  # (T, 30, 4)
+            body_lin_vel = data['body_linear_velocities'] if 'body_linear_velocities' in data else None  # (T, 30, 3)
+            body_ang_vel = data['body_angular_velocities'] if 'body_angular_velocities' in data else None  # (T, 30, 3)
             
             # Get fps
             fps_data = data['fps']
@@ -251,6 +260,12 @@ def read_single_sequence(split_name, dataset_name, folder, seq_name, target_fps,
                     body_pos = body_pos[0::sampling_freq]
                     if dof_vel is not None:
                         dof_vel = dof_vel[0::sampling_freq]
+                    if body_rot is not None:
+                        body_rot = body_rot[0::sampling_freq]
+                    if body_lin_vel is not None:
+                        body_lin_vel = body_lin_vel[0::sampling_freq]
+                    if body_ang_vel is not None:
+                        body_ang_vel = body_ang_vel[0::sampling_freq]
                     frame_raw_text_labels = frame_raw_text_labels[0::sampling_freq]
                     frame_proc_text_labels = frame_proc_text_labels[0::sampling_freq]
 
@@ -285,6 +300,18 @@ def read_single_sequence(split_name, dataset_name, folder, seq_name, target_fps,
                 dof_velocities.append(dof_vel)
             else:
                 dof_velocities.append(np.zeros_like(dof_pos))  # Placeholder if not available
+            if body_rot is not None:
+                body_rotations.append(body_rot)
+            else:
+                body_rotations.append(np.zeros((body_pos.shape[0], 30, 4)))  # Placeholder
+            if body_lin_vel is not None:
+                body_linear_velocities.append(body_lin_vel)
+            else:
+                body_linear_velocities.append(np.zeros_like(body_pos))  # Placeholder
+            if body_ang_vel is not None:
+                body_angular_velocities.append(body_ang_vel)
+            else:
+                body_angular_velocities.append(np.zeros_like(body_pos))  # Placeholder
             clip_images.append(images)
             clip_pathes.append(images_path)
             text_raw_labels.append(frame_raw_text_labels)
@@ -296,6 +323,9 @@ def read_single_sequence(split_name, dataset_name, folder, seq_name, target_fps,
         'dof_positions': dof_positions,
         'body_positions': body_positions,
         'dof_velocities': dof_velocities,
+        'body_rotations': body_rotations,
+        'body_linear_velocities': body_linear_velocities,
+        'body_angular_velocities': body_angular_velocities,
         'clip_images': clip_images,
         'clip_pathes': clip_pathes,
         'text_raw_labels': text_raw_labels,
