@@ -160,12 +160,12 @@ def read_single_sequence(split_name, dataset_name, folder, seq_name, target_fps,
             
             # Try multiple name variations to match BABEL
             babel_dict = None
-            for name_variant in [seq_subj_action, 
-                                seq_subj_action.replace('_poses.npz', '_poses.npz'),
-                                seq_subj_action.replace('-', ' - ').replace('_poses', '_poses')]:
-                if name_variant in fname_to_babel:
-                    babel_dict = fname_to_babel[name_variant]
-                    break
+            # for name_variant in [seq_subj_action, 
+            #                     seq_subj_action.replace('_poses.npz', '_poses.npz'),
+            #                     seq_subj_action.replace('-', ' - ').replace('_poses', '_poses')]:
+            #     if name_variant in fname_to_babel:
+            #         babel_dict = fname_to_babel[name_variant]
+            #         break
             
             if babel_dict is None:
                 # Try with original naming convention
