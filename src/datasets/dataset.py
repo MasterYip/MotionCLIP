@@ -148,18 +148,20 @@ class Dataset(torch.utils.data.Dataset):
             #     return ret.float()
             
             # Load body positions (30 rigid bodies, each with xyz position)
-            if getattr(self, "_load_body_positions", None) is not None:
-                body_pos = self._load_body_positions(ind, frame_ix)  
-                # Shape: [seq_len, num_bodies=30, 3]
-                
-                ret = to_torch(body_pos)  
-                # Shape: [seq_len, 30, 3]
-                
-                ret = ret.permute(1, 2, 0).contiguous()  
-                # Shape: [30, 3, seq_len]
-                # Permute to standard format: [bodies, features, time]
-                
-                return ret.float()
+            if pose_rep == "xyz":
+                if getattr(self, "_load_body_positions", None) is not None:
+                    body_pos = self._load_body_positions(ind, frame_ix)  
+                    # Shape: [seq_len, num_bodies=30, 3]
+                    
+                    ret = to_torch(body_pos)
+                    ret = ret - ret[0, 0, :]  # Center at root body position of first frame
+                    # Shape: [seq_len, 30, 3]
+                    
+                    ret = ret.permute(1, 2, 0).contiguous()  
+                    # Shape: [30, 3, seq_len]
+                    # Permute to standard format: [bodies, features, time]
+                    
+                    return ret.float()
         
         # ========== BLOCK 2: XYZ Joint Positions / Translation Loading ==========
         # Load 3D joint positions (for "xyz" representation or when translation is needed)

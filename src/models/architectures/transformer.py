@@ -85,6 +85,7 @@ class Encoder_TRANSFORMER(nn.Module):
     def forward(self, batch):
         x, y, mask = batch["x"], batch["y"], batch["mask"]
         bs, njoints, nfeats, nframes = x.shape
+        # Flatten the input
         x = x.permute((3, 0, 1, 2)).reshape(nframes, bs, njoints * nfeats)
 
         # embedding of the skeleton
