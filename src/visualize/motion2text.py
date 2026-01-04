@@ -30,7 +30,9 @@ def main():
     assert os.path.isfile(parameters['input_file'])
     with open(parameters['input_file'], 'r') as fr:
         motion_csv = list(csv.DictReader(fr))
-    viz_motion2text(model, datasets, motion_csv, epoch, parameters, folder=folder)
+
+    text_vocabs = [line['motion_text'] for line in motion_csv]
+    viz_motion2text(model, datasets, motion_csv, epoch, parameters, folder=folder, text_vocabulary=text_vocabs)
 
 
 if __name__ == '__main__':

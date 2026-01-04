@@ -623,7 +623,7 @@ def encode_motions(model, motions, device):
                           'mask': model.lengths_to_mask(torch.ones(motions.shape[0], dtype=int, device=device) * 60)})["mu"]
 
 
-def viz_motion2text(model, datasets, motion_csv, epoch, params, folder):
+def viz_motion2text(model, datasets, motion_csv, epoch, params, folder, text_vocabulary=None):
     """ Retrieve motions, encode them, and find closest text descriptions using CLIP """
     
     # visualize with joints3D
@@ -636,22 +636,23 @@ def viz_motion2text(model, datasets, motion_csv, epoch, params, folder):
     device = params['device']
     
     # Define a comprehensive vocabulary of action descriptions
-    text_vocabulary = [
-        "walk", "run", "jump", "sit", "stand", "kick", "punch", "throw",
-        "high jump", "sit down", "sitting", "run fast", "walk slowly",
-        "walk forward", "walk backward", "squat", "crouch", "kneel",
-        "dance", "turn around", "spin", "cartwheel", "roll", "crawl",
-        "climb", "stretch", "bend", "wave", "clap", "reach", "grab",
-        "push", "pull", "lift", "carry", "drink", "eat", "write",
-        "bow", "salute", "point", "shake hands", "hug", "boxing",
-        "swimming motion", "yoga pose", "exercise", "jumping jacks",
-        "lunges", "side step", "hop", "skip", "march", "jog",
-        "sprint", "backflip", "handstand", "lie down", "fall",
-        "get up", "kneel down", "stand up", "crouch down",
-        "high jump", "long jump", "kick ball", "throw ball",
-        "catch ball", "dribble", "shoot", "swing",
-        "bowling", "golf swing", "tennis serve", "baseball swing", "Riding a bike"
-    ]
+    if text_vocabulary is None:
+        text_vocabulary = [
+            "walk", "run", "jump", "sit", "stand", "kick", "punch", "throw",
+            "high jump", "sit down", "sitting", "run fast", "walk slowly",
+            "walk forward", "walk backward", "squat", "crouch", "kneel",
+            "dance", "turn around", "spin", "cartwheel", "roll", "crawl",
+            "climb", "stretch", "bend", "wave", "clap", "reach", "grab",
+            "push", "pull", "lift", "carry", "drink", "eat", "write",
+            "bow", "salute", "point", "shake hands", "hug", "boxing",
+            "swimming motion", "yoga pose", "exercise", "jumping jacks",
+            "lunges", "side step", "hop", "skip", "march", "jog",
+            "sprint", "backflip", "handstand", "lie down", "fall",
+            "get up", "kneel down", "stand up", "crouch down",
+            "high jump", "long jump", "kick ball", "throw ball",
+            "catch ball", "dribble", "shoot", "swing",
+            "bowling", "golf swing", "tennis serve", "baseball swing", "Riding a bike"
+        ]
     
     # Encode all text descriptions with CLIP
     print(f"Encoding {len(text_vocabulary)} text descriptions...")
