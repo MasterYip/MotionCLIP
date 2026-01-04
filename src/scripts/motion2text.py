@@ -104,7 +104,7 @@ def main():
         'device': args.device,
         'num_frames': cfg.model.num_frames,
         'pose_rep': cfg.model.pose_rep,
-        'fps': 20,
+        'fps': 30,
         'figname': 'motion2text_{:03d}',  # Format string for epoch
         'input_file': args.input_file,
         'appearance_mode': 'motionclip',
