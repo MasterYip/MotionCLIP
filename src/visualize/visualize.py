@@ -601,8 +601,20 @@ def get_motion_text_mapping(datasets):
 def retrieve_motions(datasets, motion_collection, texts, device):
     retrieved_motions = []
     for txt in texts:
-        _split, _index = motion_collection[txt][0]
+        len = motion_collection[txt].__len__()
+        _split, _index = motion_collection[txt][len//2]  # retrieve the motion in the middle if multiple motions correspond to the same text
         retrieved_motions.append(datasets[_split][_index]['inp'].unsqueeze(0).to(device))
+    return torch.cat(retrieved_motions, axis=0)
+
+def retrieve_motion_fulllength(datasets, motion_collection, texts, device):
+    retrieved_motions = []
+    for txt in texts:
+        motion = []
+        for _split, _index in motion_collection[txt]:
+            motion.append(datasets[_split][_index]['inp'].unsqueeze(0).to(device))
+        # concat all motions for the same text with shape [1, T, D]
+        motion_concat = torch.cat(motion, axis=-1)
+        retrieved_motions.append(motion_concat)
     return torch.cat(retrieved_motions, axis=0)
 
 def encode_motions(model, motions, device):
