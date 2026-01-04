@@ -125,11 +125,16 @@ class Dataset(torch.utils.data.Dataset):
         
         # For G1 retargeted data: use DOF positions directly without rotation conversion
         if self.use_g1:
-            if getattr(self, "_load_dof_positions", None) is not None:
-                dof_pos = self._load_dof_positions(ind, frame_ix)
-                ret = to_torch(dof_pos)  # [seq_len, num_dofs]
-                # Reshape to [num_dofs, 1, seq_len] for consistency with other representations
-                ret = ret.unsqueeze(1).permute(1, 2, 0).contiguous()
+            # if getattr(self, "_load_dof_positions", None) is not None:
+            #     dof_pos = self._load_dof_positions(ind, frame_ix)
+            #     ret = to_torch(dof_pos)  # [seq_len, num_dofs]
+            #     # Reshape to [num_dofs, 1, seq_len] for consistency with other representations
+            #     ret = ret.unsqueeze(1).permute(1, 2, 0).contiguous()
+            #     return ret.float()
+            if getattr(self, "_load_body_positions", None) is not None:
+                body_pos = self._load_body_positions(ind, frame_ix)
+                ret = to_torch(body_pos)  # [seq_len, num_bodies, 3]
+                ret = ret.permute(1, 2, 0).contiguous()  # [num_bodies, 3, seq_len]
                 return ret.float()
         
         if pose_rep == "xyz" or self.translation:

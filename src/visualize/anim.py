@@ -28,6 +28,16 @@ vibe_kinematic_chain = [[0, 12, 13, 14, 15],
 
 action2motion_kinematic_chain = vibe_kinematic_chain
 
+# G1 Robot kinematic chain (30 bodies)
+# Format: connections between body indices
+g1_kinematic_chain = [
+    [0, 1, 2, 3, 4, 5, 6],        # Left leg: pelvis -> left foot
+    [0, 7, 8, 9, 10, 11, 12],     # Right leg: pelvis -> right foot
+    [0, 13, 14, 15],              # Torso: pelvis -> torso
+    [15, 16, 17, 18, 19, 20, 21, 22],  # Left arm: torso -> left wrist
+    [15, 23, 24, 25, 26, 27, 28, 29],  # Right arm: torso -> right wrist
+]
+
 colors_blue = ["#4D84AA", "#5B9965",  "#61CEB9", "#34C1E2", "#80B79A"]
 colors_orange = ["#DD5A37", "#D69E00",  "#B75A39", "#FF6D00", "#DDB50E"]
 colors_purple = ["#6B31DB", "#AD40A8",  "#AF2B79", "#9B00FF", "#D836C1"]
@@ -155,3 +165,109 @@ def plot_3d_motion(motion, length, save_path, params, title="", interval=50, pal
 def plot_3d_motion_dico(x):
     motion, length, save_path, params, kargs = x
     plot_3d_motion(motion, length, save_path, params, **kargs)
+
+
+def plot_3d_motion_g1(motion, length, save_path, params, title="", interval=50, palette=None,
+                      view_point=(-90, -90)):
+    """Plot G1 robot motion with 30 body positions."""
+    import matplotlib
+    import matplotlib.pyplot as plt
+    from mpl_toolkits.mplot3d import Axes3D
+    from matplotlib.animation import FuncAnimation
+    matplotlib.use('Agg')
+    
+    appearance = params.get('appearance_mode', 'motionclip')
+
+    fig = plt.figure(figsize=[2.6, 2.8])
+    ax = fig.add_subplot(111, projection='3d')
+
+    def init():
+        ax.set_xticklabels([])
+        ax.set_yticklabels([])
+        ax.set_zticklabels([])
+
+        ax.set_xlim(-0.7, 0.7)
+        ax.set_ylim(-0.7, 0.7)
+        ax.set_zlim(-0.7, 0.7)
+
+        ax.view_init(azim=view_point[0], elev=view_point[1])
+        ax.xaxis._axinfo["grid"]['color'] = (0.5, 0.5, 0.5, 0.25)
+        ax.yaxis._axinfo["grid"]['color'] = (0.5, 0.5, 0.5, 0.25)
+        ax.zaxis._axinfo["grid"]['color'] = (0.5, 0.5, 0.5, 0.25)
+        if appearance == 'motionclip':
+            ax.set_axis_off()
+
+    colors = colors_blue
+    if appearance == 'motionclip':
+        if palette == 'orange':
+            colors = colors_orange
+        else:
+            colors = colors_blue
+
+    if torch.is_tensor(motion):
+        motion = motion.numpy()
+    
+    # Expected input format: (30, 3, num_frames) like the original plot_3d_motion
+    # Keep it in this format for consistency with existing visualization pipeline
+    if len(motion.shape) == 3:
+        if motion.shape[0] == 30 and motion.shape[1] == 3:
+            # Already in correct format (30, 3, T)
+            pass
+        elif motion.shape[1] == 30 and motion.shape[2] == 3:
+            # Format is (T, 30, 3), transpose to (30, 3, T)
+            motion = motion.transpose(1, 2, 0)
+        elif motion.shape[0] == 3 and motion.shape[1] == 30:
+            # Format is (3, 30, T), transpose to (30, 3, T)
+            motion = motion.transpose(1, 0, 2)
+        else:
+            # Try to infer: if first dimension is largest, assume it's T
+            if motion.shape[0] > motion.shape[1] and motion.shape[0] > motion.shape[2]:
+                # Likely (T, 30, 3) or (T, 3, 30)
+                if motion.shape[1] == 30:
+                    motion = motion.transpose(1, 2, 0)  # (T, 30, 3) -> (30, 3, T)
+                else:
+                    motion = motion.transpose(2, 1, 0)  # (T, 3, 30) -> (30, 3, T)
+    
+    # Verify shape
+    if motion.shape[0] != 30 or motion.shape[1] != 3:
+        print(f"Warning: Unexpected motion shape {motion.shape}, expected (30, 3, T)")
+
+    kinematic_tree = g1_kinematic_chain
+
+    def update(index):
+        while ax.lines:
+            ax.lines[0].remove()
+        while ax.collections:
+            ax.collections[0].remove()
+        
+        # Extract positions for current frame: motion[:, :, index] gives (30, 3)
+        positions = motion[:, :, index]  # (30, 3)
+        
+        # Draw kinematic chains
+        for chain, color in zip(kinematic_tree, colors):
+            chain_pos = positions[chain]  # (len(chain), 3)
+            ax.plot(chain_pos[:, 0], chain_pos[:, 1], chain_pos[:, 2],
+                   linewidth=4.0, color=color)
+        
+        # Draw joints as scatter points
+        ax.scatter(positions[:, 0], positions[:, 1], positions[:, 2],
+                  c='black', s=20, alpha=0.6)
+        
+        # Highlight pelvis (root)
+        ax.scatter(positions[0:1, 0], positions[0:1, 1], positions[0:1, 2],
+                  c='red', s=40)
+
+    wraped_title = '\n'.join(wrap(title, 20))
+    ax.set_title(wraped_title)
+
+    ani = FuncAnimation(fig, update, frames=length, interval=interval, repeat=False, init_func=init)
+
+    plt.tight_layout()
+    ani.save(save_path, writer='pillow', fps=1000/interval)
+    plt.close()
+
+
+def plot_3d_motion_dico_g1(x):
+    """Wrapper for G1 motion plotting with dictionary unpacking."""
+    motion, length, save_path, params, kargs = x
+    plot_3d_motion_g1(motion, length, save_path, params, **kargs)

@@ -7,7 +7,7 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 from tqdm import tqdm
-from src.visualize.anim import plot_3d_motion_dico, load_anim
+from src.visualize.anim import plot_3d_motion_dico, plot_3d_motion_dico_g1, load_anim
 import clip
 from PIL import Image
 import pickle
@@ -58,6 +58,128 @@ def stack_gen_only(gen):
         frame = np.concatenate((columns[:]), 0).transpose(1, 0, 2)
         frames.append(frame)
     return np.stack(frames)
+
+
+def generate_by_video_g1(visualization, reconstructions, generation,
+                         label_to_action_name, params, nats, nspa, tmp_path, image_pathes=None, mode=None):
+    """
+    Generate videos for G1 robot motion visualization.
+    G1 data format: body_positions (30, 3) for 30 body positions.
+    """
+    fps = params["fps"]
+    params = params.copy()
+
+    if "output_xyz" in visualization or "output_xyz" in generation:
+        outputkey = "output_xyz"
+        params["pose_rep"] = "xyz"
+    else:
+        outputkey = "poses"
+
+    keep = [outputkey, "lengths", "y"]
+
+    def _to_np(x):
+        if type(x).__module__ == np.__name__:
+            return x
+        else:  # assume tensor
+            return x.data.cpu().numpy()
+
+    visu = {key: _to_np(visualization[key]) for key in keep if key in visualization.keys()}
+    recons = {mode: {key: _to_np(reconstruction[key]) for key in keep if key in reconstruction.keys()}
+              for mode, reconstruction in reconstructions.items()}
+    gener = {key: _to_np(generation[key]) for key in keep if key in generation.keys()}
+
+    def get_palette(i, nspa):
+        if mode == 'edit' and i < 3:
+            return 'orange'
+        elif mode == 'interp' and i in [0, nspa-1]:
+            return 'orange'
+        return 'blue'
+
+    if len(visu) > 0:
+        lenmax = max(gener["lengths"].max(), visu["lengths"].max())
+    else:
+        lenmax = gener["lengths"].max()
+    timesize = lenmax + 5
+
+    import multiprocessing
+
+    def pool_job_with_desc(pool, iterator, desc, max_, save_path_format, isij):
+        with tqdm(total=max_, desc=desc.format("Render")) as pbar:
+            for _ in pool.imap_unordered(plot_3d_motion_dico_g1, iterator):
+                pbar.update()
+        if isij:
+            array = np.stack([[load_anim(save_path_format.format(i, j), timesize)
+                               for j in range(nats)]
+                              for i in tqdm(range(nspa), desc=desc.format("Load"))])
+            return array.transpose(2, 0, 1, 3, 4, 5)
+        else:
+            array = np.stack([load_anim(save_path_format.format(i), timesize)
+                              for i in tqdm(range(nats), desc=desc.format("Load"))])
+            return array.transpose(1, 0, 2, 3, 4)
+
+    with multiprocessing.Pool() as pool:
+        # Generated samples
+        save_path_format = os.path.join(tmp_path, "gen_{}_{}.gif")
+        iterator = ((gener[outputkey][i, j],
+                     gener["lengths"][i, j],
+                     save_path_format.format(i, j),
+                     params, {"title": f"{label_to_action_name(gener['y'][i, j])}", "interval": 1000/fps, "palette": get_palette(i, nspa)})
+                    for j in range(nats) for i in range(nspa))
+        gener["frames"] = pool_job_with_desc(pool, iterator,
+                                             "{} the generated samples",
+                                             nats*nspa,
+                                             save_path_format,
+                                             True)
+
+        # Make frames with no title blank
+        frames_no_title = gener['y'] == ''
+        gener["frames"][:, frames_no_title] = gener["frames"][:, 0, 0:1, 0:1, 0:1]
+
+        # Real samples
+        if len(visu) > 0:
+            save_path_format = os.path.join(tmp_path, "real_{}.gif")
+            iterator = ((visu[outputkey][i],
+                         visu["lengths"][i],
+                         save_path_format.format(i),
+                         params, {"title": f"real: {label_to_action_name(visu['y'][i])}", "interval": 1000/fps})
+                        for i in range(nats))
+            visu["frames"] = pool_job_with_desc(pool, iterator,
+                                                "{} the real samples",
+                                                nats,
+                                                save_path_format,
+                                                False)
+        for mode, recon in recons.items():
+            # Reconstructed samples
+            save_path_format = os.path.join(tmp_path, f"reconstructed_{mode}_" + "{}.gif")
+            iterator = ((recon[outputkey][i],
+                         recon["lengths"][i],
+                         save_path_format.format(i),
+                         params, {"title": f"recons: {label_to_action_name(recon['y'][i])}",
+                                  "interval": 1000/fps})
+                        for i in range(nats))
+            recon["frames"] = pool_job_with_desc(pool, iterator,
+                                                 "{} the reconstructed samples",
+                                                 nats,
+                                                 save_path_format,
+                                                 False)
+    
+    if image_pathes is not None:
+        assert nats == 1
+        assert nspa == len(image_pathes)
+        h, w = gener["frames"].shape[3:5]
+        image_frames = []
+        for im_path in image_pathes:
+            im = Image.open(im_path).resize((w, h))
+            image_frames.append(np.tile(np.expand_dims(np.asarray(im)[..., :3], axis=(0, 1, 2)), (timesize, 1, 1, 1, 1, 1)))
+        image_frames = np.concatenate(image_frames, axis=1)
+        assert image_frames.shape == gener["frames"].shape
+        return stack_gen_and_images(gener["frames"], image_frames)
+
+    if len(visu) == 0:
+        frames = stack_gen_only(gener["frames"])
+    else:
+        frames = stack_images(visu["frames"], [recon["frames"] for recon in recons.values()], gener["frames"])
+    return frames
 
 
 def generate_by_video(visualization, reconstructions, generation,
@@ -277,9 +399,13 @@ def viz_clip_text(model, text_grid, epoch, params, folder):
     # save_pkl(generation['output'], generation['output_xyz'], texts, finalpath.replace('.gif', '.pkl'))
 
     print("Generate the videos..")
-    frames = generate_by_video({}, {}, generation,
-                               lambda x: str(x), params, w, h, tmp_path, mode='text')
-
+    use_g1 = params.get('use_g1', False)
+    if use_g1:
+        frames = generate_by_video_g1({}, {}, generation,
+                                      lambda x: str(x), params, w, h, tmp_path, mode='text')
+    else:
+        frames = generate_by_video({}, {}, generation,
+                                   lambda x: str(x), params, w, h, tmp_path, mode='text')
 
     print(f"Writing video [{finalpath}]")
     imageio.mimsave(finalpath, frames, fps=params["fps"])
@@ -339,8 +465,13 @@ def viz_clip_interp(model, datasets, interp_csv, num_stops, epoch, params, folde
     os.makedirs(tmp_path, exist_ok=True)
 
     print("Generate the videos..")
-    frames = generate_by_video({}, {}, generation,
-                               lambda x: str(x), params, w, h, tmp_path, mode='interp')
+    use_g1 = params.get('use_g1', False)
+    if use_g1:
+        frames = generate_by_video_g1({}, {}, generation,
+                                      lambda x: str(x), params, w, h, tmp_path, mode='interp')
+    else:
+        frames = generate_by_video({}, {}, generation,
+                                   lambda x: str(x), params, w, h, tmp_path, mode='interp')
 
     print(f"Writing video [{finalpath}]")
     imageio.mimsave(finalpath, frames, fps=params["fps"])
@@ -403,8 +534,13 @@ def viz_clip_edit(model, datasets, edit_csv, epoch, params, folder):
     os.makedirs(tmp_path, exist_ok=True)
 
     print("Generate the videos..")
-    frames = generate_by_video({}, {}, generation,
-                               lambda x: str(x), params, w, h, tmp_path, mode='edit')
+    use_g1 = params.get('use_g1', False)
+    if use_g1:
+        frames = generate_by_video_g1({}, {}, generation,
+                                      lambda x: str(x), params, w, h, tmp_path, mode='edit')
+    else:
+        frames = generate_by_video({}, {}, generation,
+                                   lambda x: str(x), params, w, h, tmp_path, mode='edit')
 
     print(f"Writing video [{finalpath}]")
     imageio.mimsave(finalpath, frames, fps=params["fps"])
@@ -623,8 +759,13 @@ def viz_motion2text(model, datasets, motion_csv, epoch, params, folder):
         
         # Generate videos
         print("Generate the videos..")
-        frames = generate_by_video({}, {}, visualization,
-                                   lambda x: str(x), params, w, h, tmp_path, mode='text')
+        use_g1 = params.get('use_g1', False)
+        if use_g1:
+            frames = generate_by_video_g1({}, {}, visualization,
+                                          lambda x: str(x), params, w, h, tmp_path, mode='text')
+        else:
+            frames = generate_by_video({}, {}, visualization,
+                                       lambda x: str(x), params, w, h, tmp_path, mode='text')
         
         print(f"Writing video [{finalpath}]")
         imageio.mimsave(finalpath, frames, fps=params["fps"])

@@ -464,6 +464,7 @@ class G1AMASS(Dataset):
 
         return db
 
+    # Legacy Support
     def _load_joints3D(self, ind, frame_ix):
         """Load 3D body positions (equivalent to joints3D for G1)."""
         body_pos = self._body_positions[ind][frame_ix]  # (30, 3)
@@ -479,6 +480,7 @@ class G1AMASS(Dataset):
         # Reshape to (30, 1, 3) to match expected format (num_bodies, 1, 3)
         return body_pos.reshape(30, 1, 3)
 
+    # New G1-specific loaders
     def _load_dof_positions(self, ind, frame_ix):
         """Load DOF positions for G1 robot."""
         if len(self._dof_positions) > 0:
@@ -489,6 +491,12 @@ class G1AMASS(Dataset):
         """Load DOF velocities for G1 robot."""
         if len(self._dof_velocities) > 0:
             return self._dof_velocities[ind][frame_ix]
+        return None
+
+    def _load_body_positions(self, ind, frame_ix):
+        """Load 3D body positions (equivalent to joints3D for G1)."""
+        if len(self._dof_positions) > 0:
+            return self._body_positions[ind][frame_ix]  # (30, 3)
         return None
 
     def _load_body_rotations(self, ind, frame_ix):
