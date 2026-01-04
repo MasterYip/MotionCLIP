@@ -401,7 +401,7 @@ if __name__ == '__main__':
             clip_images_dir=args.clip_images_dir
         )
 
-        db_file = osp.join(args.output_dir, 'g1_{}_{}fps'.format(args.dataset_name, args.target_fps))
+        db_file = osp.join(args.output_dir, '{}_{}fps'.format(args.dataset_name, args.target_fps))
         db_file += '_{}.pt'.format(split_name)
         
         if args.quick_run:

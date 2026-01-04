@@ -121,59 +121,138 @@ class Dataset(torch.utils.data.Dataset):
         return self._get_item_data_index(data_index)
 
     def _load(self, ind, frame_ix):
+        """
+        Load motion data for a specific sequence and convert to desired representation.
+        
+        Args:
+            ind: Data index in the dataset
+            frame_ix: Frame indices to extract from the sequence
+            
+        Returns:
+            Motion tensor in shape [num_joints/bodies, feat_dim, seq_len]
+            - For G1: [30, 3, seq_len] (30 body positions, xyz)
+            - For SMPL xyz: [22, 3, seq_len] (22 joints, xyz)
+            - For SMPL rot6d+trans: [23, 9, seq_len] (22 joints + 1 translation, 6D rotation + 3D padding)
+        """
         pose_rep = self.pose_rep
         
-        # For G1 retargeted data: use DOF positions directly without rotation conversion
+        # ========== BLOCK 1: G1 Robot Data Loading ==========
+        # For G1 retargeted data: use body positions directly (no rotation conversion needed)
         if self.use_g1:
+            # Alternative: Load DOF positions (joint angles) - currently commented out
             # if getattr(self, "_load_dof_positions", None) is not None:
             #     dof_pos = self._load_dof_positions(ind, frame_ix)
-            #     ret = to_torch(dof_pos)  # [seq_len, num_dofs]
+            #     ret = to_torch(dof_pos)  # [seq_len, num_dofs=29]
             #     # Reshape to [num_dofs, 1, seq_len] for consistency with other representations
             #     ret = ret.unsqueeze(1).permute(1, 2, 0).contiguous()
             #     return ret.float()
+            
+            # Load body positions (30 rigid bodies, each with xyz position)
             if getattr(self, "_load_body_positions", None) is not None:
-                body_pos = self._load_body_positions(ind, frame_ix)
-                ret = to_torch(body_pos)  # [seq_len, num_bodies, 3]
-                ret = ret.permute(1, 2, 0).contiguous()  # [num_bodies, 3, seq_len]
+                body_pos = self._load_body_positions(ind, frame_ix)  
+                # Shape: [seq_len, num_bodies=30, 3]
+                
+                ret = to_torch(body_pos)  
+                # Shape: [seq_len, 30, 3]
+                
+                ret = ret.permute(1, 2, 0).contiguous()  
+                # Shape: [30, 3, seq_len]
+                # Permute to standard format: [bodies, features, time]
+                
                 return ret.float()
         
+        # ========== BLOCK 2: XYZ Joint Positions / Translation Loading ==========
+        # Load 3D joint positions (for "xyz" representation or when translation is needed)
         if pose_rep == "xyz" or self.translation:
             if getattr(self, "_load_joints3D", None) is not None:
-                # Locate the root joint of initial pose at origin
+                # Load raw 3D joint positions
                 joints3D = self._load_joints3D(ind, frame_ix)
-                joints3D = joints3D - joints3D[0, 0, :]
+                # Shape: [seq_len, num_joints=22, 3]
+                
+                # Center the skeleton: subtract root joint position at first frame
+                # This removes global translation, keeping only relative positions
+                joints3D = joints3D - joints3D[0, 0, :]  
+                # Shape: [seq_len, 22, 3] (now centered at origin)
+                
                 ret = to_torch(joints3D)
+                # Shape: [seq_len, 22, 3]
+                
                 if self.translation:
-                    ret_tr = ret[:, 0, :]
+                    # Extract root joint trajectory for separate translation handling
+                    ret_tr = ret[:, 0, :]  
+                    # Shape: [seq_len, 3] - root joint xyz over time
             else:
+                # Fallback: load translation separately if joints3D not available
                 if pose_rep == "xyz":
                     raise ValueError("This representation is not possible.")
                 if getattr(self, "_load_translation") is None:
                     raise ValueError("Can't extract translations.")
                 ret_tr = self._load_translation(ind, frame_ix)
+                # Shape: [seq_len, 3]
+                
                 ret_tr = to_torch(ret_tr - ret_tr[0])
+                # Shape: [seq_len, 3] (centered: first frame at origin)
 
+        # ========== BLOCK 3: Rotation Representation Loading & Conversion ==========
+        # Load and convert rotation data (for non-xyz representations)
         if pose_rep != "xyz":
             if getattr(self, "_load_rotvec", None) is None:
                 raise ValueError("This representation is not possible.")
             else:
+                # Load rotation vectors (axis-angle representation)
                 pose = self._load_rotvec(ind, frame_ix)
+                # Shape: [seq_len, num_joints=22, 3] (axis-angle for each joint)
+                
                 if not self.glob:
+                    # Remove global orientation (root joint rotation) if glob=False
                     pose = pose[:, 1:, :]
+                    # Shape: [seq_len, 21, 3] (without root joint)
+                
                 pose = to_torch(pose)
+                # Shape: [seq_len, 22 or 21, 3]
+                
+                # Convert axis-angle to desired rotation representation
                 if pose_rep == "rotvec":
                     ret = pose
+                    # Shape: [seq_len, num_joints, 3] - keep as axis-angle
+                    
                 elif pose_rep == "rotmat":
+                    # Convert to rotation matrices (3x3 = 9 elements flattened)
                     ret = geometry.axis_angle_to_matrix(pose).view(*pose.shape[:2], 9)
+                    # Shape: [seq_len, num_joints, 9]
+                    
                 elif pose_rep == "rotquat":
+                    # Convert to quaternions (4 elements: w, x, y, z)
                     ret = geometry.axis_angle_to_quaternion(pose)
+                    # Shape: [seq_len, num_joints, 4]
+                    
                 elif pose_rep == "rot6d":
+                    # Convert to 6D rotation representation (continuous, good for learning)
                     ret = geometry.matrix_to_rotation_6d(geometry.axis_angle_to_matrix(pose))
+                    # Shape: [seq_len, num_joints, 6]
+        
+        # ========== BLOCK 4: Add Translation to Rotation Data ==========
+        # Concatenate translation with rotation data (if needed)
         if pose_rep != "xyz" and self.translation:
+            # Create padded translation vector matching rotation feature dimension
             padded_tr = torch.zeros((ret.shape[0], ret.shape[2]), dtype=ret.dtype)
+            # Shape: [seq_len, feat_dim] where feat_dim = 3, 4, 6, or 9
+            
             padded_tr[:, :3] = ret_tr
+            # Fill first 3 dims with actual translation (xyz), rest are zeros
+            # Shape: [seq_len, feat_dim] with [x, y, z, 0, 0, ...] per frame
+            
             ret = torch.cat((ret, padded_tr[:, None]), 1)
+            # Shape: [seq_len, num_joints+1, feat_dim]
+            # Concatenate translation as an extra "joint" channel
+            # e.g., for rot6d: [seq_len, 23, 6] = 22 joints + 1 translation vector
+        
+        # ========== BLOCK 5: Final Permutation to Standard Format ==========
+        # Permute from [seq_len, num_joints, feat_dim] to [num_joints, feat_dim, seq_len]
         ret = ret.permute(1, 2, 0).contiguous()
+        # Shape: [num_joints, feat_dim, seq_len]
+        # Standard format: [spatial, features, temporal]
+        
         return ret.float()
 
     def _get_item_data_index(self, data_index):
