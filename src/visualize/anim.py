@@ -133,6 +133,9 @@ def plot_3d_motion(motion, length, save_path, params, title="", interval=50, pal
     else:
         kinematic_tree = None
 
+    # Cache pelvis/root trajectory for ground reference line
+    pelvis_traj = motion[0]  # (3, T)
+
     def update(index):
         while ax.lines:
             ax.lines[0].remove()
@@ -148,6 +151,13 @@ def plot_3d_motion(motion, length, save_path, params, title="", interval=50, pal
                        motion[1:, 2, index], c="red")
             ax.scatter(motion[:1, 0, index], motion[:1, 1, index],
                        motion[:1, 2, index], c="blue")
+
+        # Draw ground reference line using pelvis trajectory (x-z plane)
+        traj_len = min(index + 1, pelvis_traj.shape[1])
+        ax.plot(pelvis_traj[0, :traj_len],
+            pelvis_traj[1, :traj_len],
+            pelvis_traj[2, :traj_len],
+            color='gray', linewidth=2.0, alpha=0.6)
 
     wraped_title = '\n'.join(wrap(title, 20))
     ax.set_title(wraped_title)
@@ -168,7 +178,7 @@ def plot_3d_motion_dico(x):
 
 
 def plot_3d_motion_g1(motion, length, save_path, params, title="", interval=50, palette=None,
-                      view_point=(-90, -90)):
+                      view_point=(90, 0)):
     """Plot G1 robot motion with 30 body positions."""
     import matplotlib
     import matplotlib.pyplot as plt
@@ -234,6 +244,9 @@ def plot_3d_motion_g1(motion, length, save_path, params, title="", interval=50, 
 
     kinematic_tree = g1_kinematic_chain
 
+    # Cache pelvis trajectory in world space (before centering), to draw ground reference line
+    pelvis_traj = motion[0]  # (3, T)
+
     def update(index):
         while ax.lines:
             ax.lines[0].remove()
@@ -241,7 +254,10 @@ def plot_3d_motion_g1(motion, length, save_path, params, title="", interval=50, 
             ax.collections[0].remove()
         
         # Extract positions for current frame: motion[:, :, index] gives (30, 3)
-        positions = motion[:, :, index]  # (30, 3)
+        # Center pelvis to origin for clearer articulation view
+        positions_world = motion[:, :, index]  # (30, 3)
+        pelvis = positions_world[0:1]
+        positions = positions_world - pelvis  # centered skeleton
         
         # Draw kinematic chains
         for chain, color in zip(kinematic_tree, colors):
@@ -256,6 +272,14 @@ def plot_3d_motion_g1(motion, length, save_path, params, title="", interval=50, 
         # Highlight pelvis (root)
         ax.scatter(positions[0:1, 0], positions[0:1, 1], positions[0:1, 2],
                   c='red', s=40)
+
+        # Draw ground reference line using pelvis trajectory (x-z plane), keeps translation context
+        traj_len = min(index + 1, pelvis_traj.shape[1])
+        pelvis_traj_rel = pelvis_traj - pelvis_traj[:, traj_len-1:traj_len]  # relative to current pelvis
+        ax.plot(pelvis_traj_rel[0, :traj_len],
+                pelvis_traj_rel[1, :traj_len],
+                pelvis_traj_rel[2, :traj_len],
+                color='gray', linewidth=2.0, alpha=0.6)
 
     wraped_title = '\n'.join(wrap(title, 20))
     ax.set_title(wraped_title)
