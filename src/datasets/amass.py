@@ -196,6 +196,7 @@ class AMASS(Dataset):
         self._clip_texts = []
         self._clip_pathes = []
         self._actions_cat = []
+        # PROBLEM: Which is better?
         self.clip_label_text = "text_raw_labels"  # "text_proc_labels"
 
         seq_len = 100
@@ -377,6 +378,7 @@ class G1AMASS(Dataset):
         
         # Split sequences
         for seq_idx in range(n_sequences):
+            # The list of All motions of all Sequences & subjects
             body_pos = self.db['body_positions'][seq_idx]
             n_sub_seq = body_pos.shape[0] // seq_len
             if n_sub_seq == 0:

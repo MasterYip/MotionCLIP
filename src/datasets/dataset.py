@@ -254,6 +254,7 @@ class Dataset(torch.utils.data.Dataset):
 
         if hasattr(self, 'db') and self.clip_label_text in self.db.keys():
             text_labels = self.get_clip_text(data_index, frame_ix)
+            # Perform unique combination of text labels of each frame
             text_labels = " and ".join(list(np.unique(text_labels)))
             output['clip_text'] = text_labels
 

@@ -142,32 +142,30 @@ def read_single_sequence(split_name, dataset_name, folder, seq_name, target_fps,
     text_proc_labels = []
     action_cat = []
 
+    # For each subject
     for subject in tqdm(subjects):
         # Look for G1 retargeted files (suffix: _jpos.npz)
         actions = [x for x in os.listdir(osp.join(folder, subject)) if x.endswith(G1_FILE_SUFFIX)]
 
+        # For each action npz file
         for action in actions:
             fname = osp.join(folder, subject, action)
 
             # Map to BABEL annotations
             # Convert G1 filename back to original AMASS filename
-            # E.g., "D2-Wait1_poses_120_jpos.npz" -> "D2 - Wait 1_poses.npz"
+            # E.g., "D2-Wait1_poses_120_jpos.npz" -> "D2-Wait1_poses.npz"
             original_action_name = action[:-13] + '.npz'
-            # Handle name transformations (G1 files may have different naming)
-            # The retargeting process might change "D2 - Wait 1" to "D2-Wait1"
-            # We need to match this to BABEL which uses original names
-            
             folder_path, sequence_name = os.path.split(folder)
             seq_subj_action = osp.join(sequence_name, subject, original_action_name)
             
             # Try multiple name variations to match BABEL
             babel_dict = None
-            # for name_variant in [seq_subj_action, 
-            #                     seq_subj_action.replace('_poses.npz', '_poses.npz'),
-            #                     seq_subj_action.replace('-', ' - ').replace('_poses', '_poses')]:
-            #     if name_variant in fname_to_babel:
-            #         babel_dict = fname_to_babel[name_variant]
-            #         break
+            for name_variant in [seq_subj_action, 
+                                seq_subj_action.replace('_poses.npz', '_poses.npz'),
+                                seq_subj_action.replace('-', ' - ').replace('_poses', '_poses')]:
+                if name_variant in fname_to_babel:
+                    babel_dict = fname_to_babel[name_variant]
+                    break
             
             if babel_dict is None:
                 # Try with original naming convention
@@ -190,7 +188,7 @@ def read_single_sequence(split_name, dataset_name, folder, seq_name, target_fps,
             if 'dof_positions' not in data:
                 print(f"Skipping non-G1 file: {fname}")
                 continue
-            
+
             # Extract G1 motion data
             dof_pos = data['dof_positions']  # (T, 29)
             body_pos = data['body_positions']  # (T, 30, 3)
@@ -220,7 +218,7 @@ def read_single_sequence(split_name, dataset_name, folder, seq_name, target_fps,
                 if label_dict['act_cat'] is not None:
                     seq_act_cat.extend(label_dict['act_cat'])
 
-            # Frame labels
+            # Frame labels (Assign labels to each frame)
             if babel_dict['frame_ann'] is None:
                 frame_raw_labels = "and ".join(seq_raw_labels)
                 frame_proc_labels = "and ".join(seq_proc_label)

@@ -69,12 +69,26 @@ def viz_dataset_motions(model, datasets, motion_csv, epoch, params, folder, imag
         
         motions = retrieve_motions(datasets, motion_collection, [motion_text], device)
         
+        # Get actual motion length (full length, not clipped)
+        # Motion shape is typically (batch, features, frames) or (batch, frames, features)
+        # We need to determine the actual sequence length
+        if len(motions.shape) == 3:
+            # Shape: (batch, seq_len, features) or (batch, features, seq_len)
+            # Assuming (batch, seq_len, features) based on typical motion representation
+            actual_length = motions.shape[1]
+        elif len(motions.shape) == 2:
+            # Shape: (batch, features) - single frame or flattened
+            actual_length = 1
+        else:
+            # Fallback to params if shape is unexpected
+            actual_length = params['num_frames']
+        
         # Store motion for visualization
         all_motions.append(motions)
         all_labels.append(motion_text)
-        all_lengths.append(torch.tensor([params['num_frames']], device=device))
+        all_lengths.append(torch.tensor([actual_length], device=device))
         
-        print(f"  ✓ Motion retrieved successfully (shape: {motions.shape})")
+        print(f"  ✓ Motion retrieved successfully (shape: {motions.shape}, length: {actual_length} frames)")
         print()
     
     print("="*80)
