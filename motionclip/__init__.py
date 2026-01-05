@@ -16,6 +16,8 @@ if _src_dir not in sys.path:
     sys.path.insert(0, _src_dir)
 
 from src.utils.get_model_and_data import get_motion_clip, get_model_and_data
+import src.utils.rotation_conversions as geometry
+
 
 __version__ = '1.0.0'
-__all__ = ['get_motion_clip', 'get_model_and_data']
+__all__ = ['get_motion_clip', 'get_model_and_data', 'geometry']

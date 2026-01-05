@@ -149,9 +149,12 @@ def _config_to_parameters(cfg, device):
         
         # Add one joint for global rotation if glob=True
         glob = model_cfg.get('glob', True)
-        if glob:
+        translation = model_cfg.get('translation', True)
+        if glob and not cfg.model.get('use_g1'):
             njoints += 1  # Add global rotation joint (e.g., 24 -> 25)
-        
+        if pose_rep != 'xyz' and translation:
+            njoints += 1  # Add translation joint
+
         # Number of features per joint depends on pose representation
         if pose_rep == 'rot6d':
             nfeats = 6  # 6D rotation

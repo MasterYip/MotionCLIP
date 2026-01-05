@@ -17,7 +17,7 @@ model:
   dropout: 0.1
   
   # Motion representation
-  pose_rep: rot6d  # rotation representation: rot6d, rotmat, etc.
+  pose_rep: xyz  # rotation representation: rot6d, rotmat, etc.
   jointstype: vertices  # vertices, a2m, smpl, vibe, a2mpl
   
   # Global motion parameters
