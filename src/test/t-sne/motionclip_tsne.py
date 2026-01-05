@@ -26,7 +26,7 @@ def load_categories_from_yaml(yaml_path=None):
     if yaml_path is None:
         # Default path relative to this script
         script_dir = os.path.dirname(os.path.abspath(__file__))
-        yaml_path = os.path.join(script_dir, 'motion_categories.yaml')
+        yaml_path = os.path.join(script_dir, 'categories_simple.yaml')
     
     if not os.path.exists(yaml_path):
         raise FileNotFoundError(f"Category YAML file not found: {yaml_path}")
@@ -84,7 +84,7 @@ def visualize_vocabulary_tsne(model, params, folder, epoch, vocabulary_categorie
     
     # Perform t-SNE
     print("Performing t-SNE dimensionality reduction...")
-    tsne = TSNE(n_components=2, random_state=42, perplexity=min(30, len(all_texts) - 1))
+    tsne = TSNE(n_components=2, random_state=42, perplexity=min(30, len(category_names)))
     text_tsne = tsne.fit_transform(text_features)
     
     # Visualize
@@ -167,7 +167,7 @@ def visualize_motion_tsne(model, datasets, params, folder, epoch, motion_categor
     
     # Perform t-SNE
     print("Performing t-SNE dimensionality reduction...")
-    tsne = TSNE(n_components=2, random_state=42, perplexity=min(30, len(motion_latents) - 1))
+    tsne = TSNE(n_components=2, random_state=42, perplexity=min(30, len(category_names)))
     motion_tsne = tsne.fit_transform(motion_latents)
     
     # Visualize
@@ -256,10 +256,11 @@ def visualize_combined_tsne(model, datasets, params, folder, epoch, motion_categ
         combined_labels = vocab_labels + motion_labels
         
         print(f"Total samples: {len(combined_labels)} ({len(vocab_labels)} vocab + {len(motion_labels)} motion)")
-        
+        unique_labels = sorted(list(set(combined_labels)))
+
         # Perform t-SNE
         print("Performing t-SNE dimensionality reduction...")
-        tsne = TSNE(n_components=2, random_state=42, perplexity=min(30, len(combined_labels) - 1))
+        tsne = TSNE(n_components=2, random_state=42, perplexity=min(30, len(unique_labels)))
         combined_tsne = tsne.fit_transform(combined_embeddings)
         
         # Visualize

@@ -1,6 +1,7 @@
 **/
 !paper-model/
 *.gif
+*.png
 *.zip
 *.tar
 *.txt
