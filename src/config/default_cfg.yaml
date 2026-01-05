@@ -2,6 +2,7 @@
 # This file contains model-specific parameters only
 
 model:
+  use_g1: true
   # Architecture
   archiname: transformer
   modeltype: cvae
@@ -28,7 +29,7 @@ model:
   
   # Encoder/Decoder
   normalize_encoder_output: false
-  outputxyz: true  # will be set based on losses
+  outputxyz: false  # will be set based on losses
   
   # Loss functions
   losses:

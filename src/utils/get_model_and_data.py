@@ -131,19 +131,21 @@ def _config_to_parameters(cfg, device):
         model_cfg = cfg.model
         pose_rep = model_cfg.get('pose_rep', 'rot6d')
         jointstype = model_cfg.get('jointstype', 'vertices')
-        
-        # Compute njoints and nfeats based on pose representation
-        # These are dataset-dependent but we use standard values
-        if jointstype == 'vertices':
-            njoints = 24  # SMPL vertices
-        elif jointstype in ['a2m', 'a2mpl']:
-            njoints = 18  # action2motion joints
-        elif jointstype == 'smpl':
-            njoints = 24  # SMPL joints
-        elif jointstype == 'vibe':
-            njoints = 21  # VIBE joints
+        if cfg.model.get('use_g1'):
+            njoints = 30
         else:
-            njoints = 24  # default
+            # Compute njoints and nfeats based on pose representation
+            # These are dataset-dependent but we use standard values
+            if jointstype == 'vertices':
+                njoints = 24  # SMPL vertices
+            elif jointstype in ['a2m', 'a2mpl']:
+                njoints = 18  # action2motion joints
+            elif jointstype == 'smpl':
+                njoints = 24  # SMPL joints
+            elif jointstype == 'vibe':
+                njoints = 21  # VIBE joints
+            else:
+                njoints = 24  # default
         
         # Add one joint for global rotation if glob=True
         glob = model_cfg.get('glob', True)

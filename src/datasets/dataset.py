@@ -158,15 +158,14 @@ class Dataset(torch.utils.data.Dataset):
                     if self.translation:
                         ret_tr = ret[:, 0, :]  # Root body trajectory
                         # Shape: [seq_len, 3]
-            elif pose_rep == "rot6d":
+
+            if pose_rep == "rot6d":
                 body_quat = self._load_body_rotations(ind, frame_ix)
                 # Shape: [seq_len, num_bodies=30, 4] (quaternions)
                 body_rotmat = geometry.quaternion_to_matrix(to_torch(body_quat))
                 # Shape: [seq_len, 30, 3, 3]
                 ret = geometry.matrix_to_rotation_6d(body_rotmat)
                 # Shape: [seq_len, 30, 6]
-            else:
-                raise ValueError("This representation is not possible for G1 data.")
 
             # Add translation if needed
             if pose_rep != "xyz" and self.translation:
