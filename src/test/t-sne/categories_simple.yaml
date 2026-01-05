@@ -110,6 +110,17 @@ motion_categories:
 # Vocabulary categories: Maps category names to lists of text descriptions
 vocabulary_categories:
   Walking:
+    - Walk
+    - Walking
+    - Walk forward
+    - Walking forward
+    - Walk back and forth
+    - Walking backwards
+    - Walk in circle
+    - Walking in a circle
+    - Walk around
+    - Taking a walk
+    - Power walking
     - a person walks forward
     - a person walks backward
     - a person walks to the left
@@ -120,26 +131,70 @@ vocabulary_categories:
     - a person walks and turns around
     - a person walks forward while curving
     - someone is power walking
-    
+
   Running:
-    - a person runs forward
-    - a person is running fast
-    - someone is jogging
-    - a person runs in place
-    - a person sprints forward
-    - someone runs backward
-    - a person runs in circles
-    - someone is running on a treadmill
+    - running
+    - Running
+    - run
+    - run in place
+    - running in place
+    - Running on treadmill
+    - run forward
+    - running forward
     
   Jumping:
-    - a person jumps up
-    - a person jumps forward
-    - someone does a jumping jack
-    - a person hops on one leg
-    - a person does a vertical jump
-    - someone jumps backward
-    - a person does a 360 degree jump
-    - someone does a high jump
+    - Jump
+    - Jumping
+    - 360 degree left jump and standing and turning back
+    - 270 degree left jump and standing and turning back
+    - 210 degree left jump and turning back
+    
+  # Dancing:
+  #   - Dancing
+  #   - A-pose and dancing and transition
+    
+  Climbing:
+    - Climbing
+    - Climb stairs
+    - Walking up stairs
+    - Walking upstairs.
+    - Walk up stairs
+    - Go down the stairs
+    - Walk down stairs
+    - Walking down steps
+    
+
+  # Walking:
+  #   - a person walks forward
+  #   - a person walks backward
+  #   - a person walks to the left
+  #   - a person walks to the right
+  #   - a person is walking slowly
+  #   - a person is walking fast
+  #   - someone walks in a circle
+  #   - a person walks and turns around
+  #   - a person walks forward while curving
+  #   - someone is power walking
+    
+  # Running:
+  #   - a person runs forward
+  #   - a person is running fast
+  #   - someone is jogging
+  #   - a person runs in place
+  #   - a person sprints forward
+  #   - someone runs backward
+  #   - a person runs in circles
+  #   - someone is running on a treadmill
+    
+  # Jumping:
+  #   - a person jumps up
+  #   - a person jumps forward
+  #   - someone does a jumping jack
+  #   - a person hops on one leg
+  #   - a person does a vertical jump
+  #   - someone jumps backward
+  #   - a person does a 360 degree jump
+  #   - someone does a high jump
     
   # Dancing:
   #   - a person is dancing
@@ -233,13 +288,13 @@ vocabulary_categories:
   #   - someone extends their arms
   #   - a person moves arms in circles
     
-  Sitting:
-    - a person sits down
-    - a person sits on a chair
-    - someone sits on the ground
-    - a person sits cross-legged
-    - a person sits and stands
-    - someone is sitting
+  # Sitting:
+  #   - a person sits down
+  #   - a person sits on a chair
+  #   - someone sits on the ground
+  #   - a person sits cross-legged
+  #   - a person sits and stands
+  #   - someone is sitting
     
   # Other_Actions:
   #   - a person wipes something down
