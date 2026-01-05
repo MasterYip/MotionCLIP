@@ -638,8 +638,9 @@ def viz_motion2text(model, datasets, motion_csv, epoch, params, folder, text_voc
     # Define a comprehensive vocabulary of action descriptions
     if text_vocabulary is None:
         text_vocabulary = [
-            "walk", "run", "jump", "sit", "stand", "kick", "punch", "throw",
+            "walk", "run", "jump", "sit down and sitting", "sit", "stand", "kick", "punch", "throw",
             "high jump", "sit down", "sitting", "run fast", "walk slowly",
+            "step back", "step forward", "turn left", "turn right",
             "walk forward", "walk backward", "squat", "crouch", "kneel",
             "dance", "turn around", "spin", "cartwheel", "roll", "crawl",
             "climb", "stretch", "bend", "wave", "clap", "reach", "grab",

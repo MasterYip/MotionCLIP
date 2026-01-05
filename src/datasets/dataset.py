@@ -6,7 +6,7 @@ from ..utils.tensors import collate
 from ..utils.misc import to_torch
 import src.utils.rotation_conversions as geometry
 
-POSE_REPS = ["xyz", "rotvec", "rotmat", "rotquat", "rot6d"]
+POSE_REPS = ["xyz", "rotvec", "rotmat", "rotquat", "rot6d", "posquat"]
 UNSUPERVISED_BABEL_ACTION_CAT_LABELS_IDXS = [48, 50, 28, 38, 52, 11, 29, 19, 51, 22, 14, 21, 26, 10, 24]
 from src.utils.action_label_to_idx import action_label_to_idx
 
@@ -166,6 +166,17 @@ class Dataset(torch.utils.data.Dataset):
                 # Shape: [seq_len, 30, 3, 3]
                 ret = geometry.matrix_to_rotation_6d(body_rotmat)
                 # Shape: [seq_len, 30, 6]
+
+            if pose_rep == "posquat":
+                body_pos = self._load_body_positions(ind, frame_ix)
+                ret_pos = to_torch(body_pos)
+                ret_pos = ret_pos - ret_pos[0, 0, :]  # Center at root body position of first frame
+                # Shape: [seq_len, 30, 3]
+                body_quat = self._load_body_rotations(ind, frame_ix)
+                # Shape: [seq_len, num_bodies=30, 4] (quaternions)
+                ret_rot = to_torch(body_quat)
+                ret = torch.cat((ret_pos, ret_rot), 2)
+                # Shape: [seq_len, 30, 7]
 
             # Add translation if needed
             if pose_rep != "xyz" and self.translation:
