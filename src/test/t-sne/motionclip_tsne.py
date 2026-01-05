@@ -6,10 +6,11 @@ import matplotlib.pyplot as plt
 import numpy as np
 import torch
 import clip
+import yaml
 from sklearn.manifold import TSNE
 from src.utils.get_model_and_data import get_model_and_data
 from src.parser.visualize import parser
-from src.visualize.visualize import get_motion_text_mapping, get_gpu_device
+from src.visualize.visualize import get_motion_text_mapping, get_gpu_device, retrieve_motions, encode_motions
 from src.utils.misc import load_model_wo_clip
 
 import src.utils.fixseed  # noqa
@@ -17,140 +18,34 @@ import src.utils.fixseed  # noqa
 plt.switch_backend('agg')
 
 
-def create_vocabulary_categories():
+def load_categories_from_yaml(yaml_path=None):
     """
-    Create a categorized vocabulary for t-SNE analysis.
-    Returns a dictionary where keys are category names and values are lists of text descriptions.
+    Load motion and vocabulary categories from YAML configuration file.
+    Returns a tuple of (motion_categories, vocabulary_categories).
     """
-    vocabulary_categories = {
-        'Walking': [
-            'a person walks forward',
-            'a person walks backward',
-            'a person walks to the left',
-            'a person walks to the right',
-            'a person is walking slowly',
-            'a person is walking fast',
-            'someone walks in a circle',
-            'a person walks and turns around',
-        ],
-        'Running': [
-            'a person runs forward',
-            'a person is running fast',
-            'someone is jogging',
-            'a person runs in place',
-            'a person sprints forward',
-            'someone runs backward',
-        ],
-        'Jumping': [
-            'a person jumps up',
-            'a person jumps forward',
-            'someone does a jumping jack',
-            'a person hops on one leg',
-            'a person does a vertical jump',
-            'someone jumps backward',
-        ],
-        'Dancing': [
-            'a person is dancing',
-            'someone dances to music',
-            'a person does a dance move',
-            'a person is breakdancing',
-            'someone is ballet dancing',
-            'a person dances freely',
-        ],
-        'Arm Movements': [
-            'a person waves their hand',
-            'a person raises their arms',
-            'someone claps their hands',
-            'a person reaches up high',
-            'a person stretches their arms',
-            'someone crosses their arms',
-        ],
-        'Sitting': [
-            'a person sits down',
-            'a person sits on a chair',
-            'someone sits on the ground',
-            'a person sits cross-legged',
-            'a person sits and stands',
-            'someone is sitting',
-        ],
-        'Kicking': [
-            'a person kicks forward',
-            'someone kicks a ball',
-            'a person does a high kick',
-            'a person kicks to the side',
-            'someone kicks backward',
-            'a person does martial arts kicks',
-        ],
-        'Punching': [
-            'a person punches forward',
-            'someone throws a punch',
-            'a person does boxing moves',
-            'a person punches the air',
-            'someone does martial arts punches',
-            'a person jabs forward',
-        ],
-    }
-    return vocabulary_categories
+    if yaml_path is None:
+        # Default path relative to this script
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        yaml_path = os.path.join(script_dir, 'motion_categories.yaml')
+    
+    if not os.path.exists(yaml_path):
+        raise FileNotFoundError(f"Category YAML file not found: {yaml_path}")
+    
+    with open(yaml_path, 'r') as f:
+        config = yaml.safe_load(f)
+    
+    motion_categories = config.get('motion_categories', {})
+    vocabulary_categories = config.get('vocabulary_categories', {})
+    
+    print(f"Loaded categories from: {yaml_path}")
+    print(f"  Motion categories: {len(motion_categories)}")
+    print(f"  Vocabulary categories: {len(vocabulary_categories)}")
+    
+    return motion_categories, vocabulary_categories
 
 
-def create_motion_categories():
-    """
-    Create a categorized list of motions for t-SNE analysis.
-    Returns a dictionary where keys are category names and values are lists of motion text labels.
-    """
-    motion_categories = {
-        'Walk': [
-            'walk',
-            'walking',
-            'walks forward',
-            'walk forward',
-            'walking forward',
-        ],
-        'Run': [
-            'run',
-            'running',
-            'jog',
-            'jogging',
-            'sprint',
-        ],
-        'Jump': [
-            'jump',
-            'jumping',
-            'hop',
-            'leap',
-            'jumps',
-        ],
-        'Dance': [
-            'dance',
-            'dancing',
-            'dances',
-        ],
-        'Sit': [
-            'sit',
-            'sitting',
-            'sits',
-            'sit down',
-        ],
-        'Kick': [
-            'kick',
-            'kicking',
-            'kicks',
-        ],
-        'Punch': [
-            'punch',
-            'punching',
-            'punches',
-        ],
-        'Wave': [
-            'wave',
-            'waving',
-            'waves',
-        ],
-    }
-    return motion_categories
 
-
-def visualize_vocabulary_tsne(model, params, folder, epoch):
+def visualize_vocabulary_tsne(model, params, folder, epoch, vocabulary_categories=None):
     """
     Perform t-SNE analysis on vocabulary embeddings in CLIP space.
     """
@@ -159,7 +54,8 @@ def visualize_vocabulary_tsne(model, params, folder, epoch):
     print("="*80 + "\n")
     
     device = params['device']
-    vocabulary_categories = create_vocabulary_categories()
+    if vocabulary_categories is None:
+        _, vocabulary_categories = load_categories_from_yaml()
     
     # Prepare data
     all_texts = []
@@ -219,7 +115,7 @@ def visualize_vocabulary_tsne(model, params, folder, epoch):
     return text_tsne, all_labels
 
 
-def visualize_motion_tsne(model, datasets, params, folder, epoch):
+def visualize_motion_tsne(model, datasets, params, folder, epoch, motion_categories=None):
     """
     Perform t-SNE analysis on motion embeddings in CLIP space.
     """
@@ -228,11 +124,11 @@ def visualize_motion_tsne(model, datasets, params, folder, epoch):
     print("="*80 + "\n")
     
     device = params['device']
-    motion_categories = create_motion_categories()
+    if motion_categories is None:
+        motion_categories, _ = load_categories_from_yaml()
     motion_collection = get_motion_text_mapping(datasets)
     
     # Prepare data
-    all_motions = []
     all_labels = []
     all_colors = []
     category_names = []
@@ -241,60 +137,49 @@ def visualize_motion_tsne(model, datasets, params, folder, epoch):
     colors = plt.cm.tab10(np.linspace(0, 1, len(motion_categories)))
     
     print("Retrieving motions from dataset...")
+    motion_texts_to_retrieve = []
     for idx, (category, motion_texts) in enumerate(motion_categories.items()):
         category_names.append(category)
         for motion_text in motion_texts:
             # Try to find motion in collection
             found = False
-            for key, value in motion_collection.items():
-                # Handle value as list, tuple, or string
-                if isinstance(value, (list, tuple)):
-                    value_str = str(value[0]) if len(value) > 0 else ""
-                else:
-                    value_str = str(value)
-                if motion_text.lower() in value_str.lower() or value_str.lower() in motion_text.lower():
-                    # Retrieve motion
-                    split_name, mot_id = key.split('_##_')
-                    motion = datasets[split_name].get_item_by_id(int(mot_id))
-                    all_motions.append(motion['x'])
-                    all_labels.append(category)
-                    all_colors.append(colors[idx])
-                    found = True
-                    break
+            if motion_text in motion_collection:
+                motion_texts_to_retrieve.append(motion_text)
+                all_labels.append(category)
+                all_colors.append(colors[idx])
+                found = True
+            else:
+                # Fallback to fuzzy matching
+                for key in motion_collection.keys():
+                    if motion_text.lower() in key.lower() or key.lower() in motion_text.lower():
+                        motion_texts_to_retrieve.append(key)
+                        all_labels.append(category)
+                        all_colors.append(colors[idx])
+                        found = True
+                        break
             if found:
                 break  # Only take one example per motion text
     
-    if len(all_motions) == 0:
+    if len(motion_texts_to_retrieve) == 0:
         print("Warning: No motions found in dataset. Skipping motion t-SNE.")
         return None, None
     
-    print(f"Total motion samples: {len(all_motions)}")
+    print(f"Total motion samples: {len(motion_texts_to_retrieve)}")
     print(f"Categories: {category_names}")
     
-    # Stack motions
-    motions = torch.stack(all_motions, dim=0).to(device)
+    # Retrieve motions using the helper function
+    motions = retrieve_motions(datasets, motion_collection, motion_texts_to_retrieve, device)
     
-    # Encode motions with the model
+    # Encode motions with the model using the helper function
     print("Encoding motions...")
     model.eval()
     with torch.no_grad():
-        # Create dummy labels and mask
-        dummy_labels = torch.zeros(motions.shape[0], dtype=int, device=device)
-        lengths = torch.ones(motions.shape[0], dtype=int, device=device) * 60
-        mask = model.lengths_to_mask(lengths)
-        
-        # Encode motions to latent space
-        motion_latents = model.encoder({
-            'x': motions,
-            'y': dummy_labels,
-            'mask': mask
-        })["mu"]
-        
+        motion_latents = encode_motions(model, motions, device)
         motion_latents = motion_latents.cpu().numpy()
     
     # Perform t-SNE
     print("Performing t-SNE dimensionality reduction...")
-    tsne = TSNE(n_components=2, random_state=42, perplexity=min(30, len(all_motions) - 1))
+    tsne = TSNE(n_components=2, random_state=42, perplexity=min(30, len(motion_latents) - 1))
     motion_tsne = tsne.fit_transform(motion_latents)
     
     # Visualize
@@ -326,7 +211,7 @@ def visualize_motion_tsne(model, datasets, params, folder, epoch):
     return motion_tsne, all_labels
 
 
-def visualize_combined_tsne(model, datasets, params, folder, epoch):
+def visualize_combined_tsne(model, datasets, params, folder, epoch, motion_categories=None, vocabulary_categories=None):
     """
     Perform combined t-SNE analysis showing both vocabulary and motion embeddings.
     """
@@ -336,8 +221,11 @@ def visualize_combined_tsne(model, datasets, params, folder, epoch):
     
     device = params['device']
     
+    # Load categories if not provided
+    if motion_categories is None or vocabulary_categories is None:
+        motion_categories, vocabulary_categories = load_categories_from_yaml()
+    
     # Get vocabulary embeddings
-    vocabulary_categories = create_vocabulary_categories()
     all_texts = []
     vocab_labels = []
     
@@ -352,47 +240,41 @@ def visualize_combined_tsne(model, datasets, params, folder, epoch):
         text_features = text_features.cpu().numpy()
     
     # Get motion embeddings
-    motion_categories = create_motion_categories()
     motion_collection = get_motion_text_mapping(datasets)
     
-    all_motions = []
     motion_labels = []
     
     print("Retrieving and encoding motions...")
+    motion_texts_to_retrieve = []
     for category, motion_texts in motion_categories.items():
         for motion_text in motion_texts:
             found = False
-            for key, value in motion_collection.items():
-                # Handle value as list, tuple, or string
-                if isinstance(value, (list, tuple)):
-                    value_str = str(value[0]) if len(value) > 0 else ""
-                else:
-                    value_str = str(value)
-                if motion_text.lower() in value_str.lower() or value_str.lower() in motion_text.lower():
-                    split_name, mot_id = key.split('_##_')
-                    motion = datasets[split_name].get_item_by_id(int(mot_id))
-                    all_motions.append(motion['x'])
-                    motion_labels.append(f"Motion: {category}")
-                    found = True
-                    break
+            # Try exact match first, then fuzzy match
+            if motion_text in motion_collection:
+                print(f"  Found motion for text '{motion_text}' in category '{category}'")
+                motion_texts_to_retrieve.append(motion_text)
+                motion_labels.append(f"Motion: {category}")
+                found = True
+            else:
+                # Fallback to fuzzy matching if exact match fails
+                for key in motion_collection.keys():
+                    if motion_text.lower() in key.lower() or key.lower() in motion_text.lower():
+                        print(f"  Found motion for text '{motion_text}' (matched '{key}') in category '{category}'")
+                        motion_texts_to_retrieve.append(key)
+                        motion_labels.append(f"Motion: {category}")
+                        found = True
+                        break
             if found:
                 break
     
-    if len(all_motions) > 0:
-        motions = torch.stack(all_motions, dim=0).to(device)
+    if len(motion_texts_to_retrieve) > 0:
+        # Retrieve motions using the helper function
+        motions = retrieve_motions(datasets, motion_collection, motion_texts_to_retrieve, device)
         
         model.eval()
         with torch.no_grad():
-            dummy_labels = torch.zeros(motions.shape[0], dtype=int, device=device)
-            lengths = torch.ones(motions.shape[0], dtype=int, device=device) * 60
-            mask = model.lengths_to_mask(lengths)
-            
-            motion_latents = model.encoder({
-                'x': motions,
-                'y': dummy_labels,
-                'mask': mask
-            })["mu"]
-            
+            # Encode motions using the helper function
+            motion_latents = encode_motions(model, motions, device)
             motion_latents = motion_latents.cpu().numpy()
         
         # Combine embeddings
@@ -452,10 +334,13 @@ def main():
     state_dict = torch.load(checkpointpath, map_location=parameters["device"])
     load_model_wo_clip(model, state_dict)
     
+    # Load categories from YAML
+    motion_categories, vocabulary_categories = load_categories_from_yaml()
+    
     # Perform t-SNE analyses
-    visualize_vocabulary_tsne(model, parameters, folder, epoch)
-    visualize_motion_tsne(model, datasets, parameters, folder, epoch)
-    visualize_combined_tsne(model, datasets, parameters, folder, epoch)
+    visualize_vocabulary_tsne(model, parameters, folder, epoch, vocabulary_categories)
+    visualize_motion_tsne(model, datasets, parameters, folder, epoch, motion_categories)
+    visualize_combined_tsne(model, datasets, parameters, folder, epoch, motion_categories, vocabulary_categories)
     
     print("\n" + "="*80)
     print("t-SNE ANALYSIS COMPLETE")
