@@ -4,6 +4,7 @@ from src.models.tools.jointstypes import JOINTSTYPES
 
 def add_model_options(parser):
     group = parser.add_argument_group('Model options')
+    # IMPORTANT: modelname defines the model type, architecture and losses used
     group.add_argument("--modelname", default='motionclip_transformer_rc_rcxyz_vel', help="Choice of the model, should be like motionclip_transformer_rc_rcxyz_vel")
     group.add_argument("--latent_dim", default=256, type=int, help="dimensionality of the latent space")
     group.add_argument("--lambda_rc", default=1.0, type=float, help="weight of the rc divergence loss")

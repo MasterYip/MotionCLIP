@@ -136,35 +136,53 @@ class MOTIONCLIP(nn.Module):
                     else:
                         raise ValueError(f'Invalid clip domain [{d}]')
 
-                # normalized features
+                # Normalize features to unit length for contrastive learning
+                # features_norm: CLIP domain features (text/image) [batch_size, 512]
+                # seq_motion_features_norm: Motion latent features [batch_size, 512]
                 features_norm = features / features.norm(dim=-1, keepdim=True)
                 seq_motion_features_norm = batch["z"] / batch["z"].norm(dim=-1, keepdim=True)
 
+                # ===== Cross-Entropy Loss (Contrastive Learning) =====
+                # Aligns motion features with CLIP domain (text/image) features using contrastive loss
+                # Similar to CLIP's image-text alignment but for motion-text/motion-image pairs
                 if 'ce' in self.clip_lambdas[d].keys():
-                    logit_scale = self.clip_model.logit_scale.exp()
+                    # Compute similarity matrix scaled by learnable temperature parameter
+                    logit_scale = self.clip_model.logit_scale.exp()  # Temperature scaling from CLIP model
+                    # logits_per_motion: [batch_size, batch_size] - similarity of each motion to each text/image
                     logits_per_motion = logit_scale * seq_motion_features_norm @ features_norm.t()
+                    # logits_per_d: [batch_size, batch_size] - transpose for symmetric loss
                     logits_per_d = logits_per_motion.t()
 
+                    # Ground truth: diagonal entries (motion[i] should match text/image[i])
                     batch_size = batch['x'].shape[0]
                     ground_truth = torch.arange(batch_size, dtype=torch.long, device=self.device)
 
-                    ce_from_motion_loss = loss_ce(logits_per_motion, ground_truth)
-                    ce_from_d_loss = loss_ce(logits_per_d, ground_truth)
-                    clip_mixed_loss = (ce_from_motion_loss + ce_from_d_loss) / 2.
+                    # Compute bidirectional cross-entropy losses
+                    ce_from_motion_loss = loss_ce(logits_per_motion, ground_truth)  # Motion -> Domain
+                    ce_from_d_loss = loss_ce(logits_per_d, ground_truth)            # Domain -> Motion
+                    clip_mixed_loss = (ce_from_motion_loss + ce_from_d_loss) / 2.   # Symmetric loss
 
+                    # Record individual loss components for monitoring
                     clip_losses[f'{d}_ce_from_d'] = ce_from_d_loss.item()
                     clip_losses[f'{d}_ce_from_motion'] = ce_from_motion_loss.item()
                     clip_losses[f'{d}_mixed_ce'] = clip_mixed_loss.item()
+                    # Add weighted loss to total
                     mixed_clip_loss += clip_mixed_loss * self.clip_lambdas[d]['ce']
 
+                # ===== MSE Loss (Direct Feature Matching) =====
+                # Enforces motion latents to directly match CLIP domain features in Euclidean space
+                # Less commonly used than contrastive loss but can provide stronger supervision
                 if 'mse' in self.clip_lambdas[d].keys():
-                    mse_clip_loss = loss_mse(features, batch["z"])
+                    mse_clip_loss = loss_mse(features, batch["z"])  # L2 distance between feature vectors
                     clip_losses[f'{d}_mse'] = mse_clip_loss.item()
                     mixed_clip_loss += mse_clip_loss * self.clip_lambdas[d]['mse']
 
+                # ===== Cosine Similarity Loss =====
+                # Maximizes cosine similarity between normalized motion and CLIP domain features
+                # Alternative to cross-entropy that directly optimizes angular distance
                 if 'cosine' in self.clip_lambdas[d].keys():
-                    cos = cosine_sim(features_norm, seq_motion_features_norm)
-                    cosine_loss = (1 - cos).mean()
+                    cos = cosine_sim(features_norm, seq_motion_features_norm)  # Cosine similarity [-1, 1]
+                    cosine_loss = (1 - cos).mean()  # Convert to loss: minimize distance, maximize similarity
                     clip_losses[f'{d}_cosine'] = cosine_loss.item()
                     mixed_clip_loss += cosine_loss * self.clip_lambdas[d]['cosine']
 

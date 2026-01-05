@@ -175,7 +175,7 @@ python -m src.train.train --clip_text_losses cosine --clip_image_losses cosine -
 --folder ./exps/my-paper-model
 ```
 
-G1 AMASS: 
+G1 AMASS Test1: 
 ```bash
 python -m src.train.train --clip_text_losses cosine --clip_image_losses cosine --pose_rep xyz \
 --lambda_vel 100 --lambda_rc 100 --lambda_rcxyz 100 \
@@ -184,7 +184,22 @@ python -m src.train.train --clip_text_losses cosine --clip_image_losses cosine -
 --device 0 \
 --dataset g1_amass \
 --datapath ./data/g1_amass_db/amass_30fps_db.pt \
---folder ./exps/g1-model3 \
+--folder ./exps/g1-model5 \
+--use_g1
+```
+
+G1 AMASS Test2: 
+```bash
+python -m src.train.train --modelname motionclip_transformer_rc_vel \
+--clip_text_losses cosine --clip_image_losses cosine --pose_rep rot6d \
+--clip_lambda_cosine 30 \
+--lambda_vel 10 --lambda_rc 10 \
+--jointstype vertices --batch_size 20 --num_frames 60 --num_layers 8 \
+--lr 0.0001 --glob --translation --no-vertstrans --latent_dim 512 --num_epochs 100 --snapshot 10 \
+--device 0 \
+--dataset g1_amass \
+--datapath ./data/g1_amass_db/amass_30fps_db.pt \
+--folder ./exps/g1-model5 \
 --use_g1
 ```
 
