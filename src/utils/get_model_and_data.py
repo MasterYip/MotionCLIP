@@ -155,6 +155,10 @@ def _config_to_parameters(cfg, device):
         # Number of features per joint depends on pose representation
         if pose_rep == 'rot6d':
             nfeats = 6  # 6D rotation
+        elif pose_rep == 'posquat':
+            nfeats = 7  # position + quaternion
+        elif pose_rep == 'posvel':
+            nfeats = 6  # position + velocity
         elif pose_rep == 'rotmat':
             nfeats = 9  # 3x3 rotation matrix
         elif pose_rep == 'rotquat':
