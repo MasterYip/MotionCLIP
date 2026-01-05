@@ -139,27 +139,15 @@ def visualize_motion_tsne(model, datasets, params, folder, epoch, motion_categor
     print("Retrieving motions from dataset...")
     motion_texts_to_retrieve = []
     for idx, (category, motion_texts) in enumerate(motion_categories.items()):
+        print(f"  Category: {category} ({len(motion_texts)} motions)")
         category_names.append(category)
         for motion_text in motion_texts:
             # Try to find motion in collection
-            found = False
             if motion_text in motion_collection:
                 motion_texts_to_retrieve.append(motion_text)
                 all_labels.append(category)
                 all_colors.append(colors[idx])
-                found = True
-            else:
-                # Fallback to fuzzy matching
-                for key in motion_collection.keys():
-                    if motion_text.lower() in key.lower() or key.lower() in motion_text.lower():
-                        motion_texts_to_retrieve.append(key)
-                        all_labels.append(category)
-                        all_colors.append(colors[idx])
-                        found = True
-                        break
-            if found:
-                break  # Only take one example per motion text
-    
+
     if len(motion_texts_to_retrieve) == 0:
         print("Warning: No motions found in dataset. Skipping motion t-SNE.")
         return None, None
@@ -248,25 +236,11 @@ def visualize_combined_tsne(model, datasets, params, folder, epoch, motion_categ
     motion_texts_to_retrieve = []
     for category, motion_texts in motion_categories.items():
         for motion_text in motion_texts:
-            found = False
             # Try exact match first, then fuzzy match
             if motion_text in motion_collection:
-                print(f"  Found motion for text '{motion_text}' in category '{category}'")
                 motion_texts_to_retrieve.append(motion_text)
                 motion_labels.append(f"Motion: {category}")
-                found = True
-            else:
-                # Fallback to fuzzy matching if exact match fails
-                for key in motion_collection.keys():
-                    if motion_text.lower() in key.lower() or key.lower() in motion_text.lower():
-                        print(f"  Found motion for text '{motion_text}' (matched '{key}') in category '{category}'")
-                        motion_texts_to_retrieve.append(key)
-                        motion_labels.append(f"Motion: {category}")
-                        found = True
-                        break
-            if found:
-                break
-    
+
     if len(motion_texts_to_retrieve) > 0:
         # Retrieve motions using the helper function
         motions = retrieve_motions(datasets, motion_collection, motion_texts_to_retrieve, device)
