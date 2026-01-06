@@ -109,6 +109,7 @@ def main():
         'input_file': args.input_file,
         'appearance_mode': 'motionclip',
         'vertstrans': cfg.model.vertstrans,
+        'use_g1': cfg.model.get('use_g1', False),  # Add G1 flag for proper visualization
     }
     
     # Run motion-to-text conversion

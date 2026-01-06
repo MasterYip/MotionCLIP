@@ -17,7 +17,23 @@ if _src_dir not in sys.path:
 
 from src.utils.get_model_and_data import get_motion_clip, get_model_and_data
 import src.utils.rotation_conversions as geometry
+from src.visualize.visualize import (
+    get_motion_text_mapping,
+    retrieve_motions,
+    encode_motions
+)
+from src.datasets.get_dataset import get_datasets
+import clip
 
 
 __version__ = '1.0.0'
-__all__ = ['get_motion_clip', 'get_model_and_data', 'geometry']
+__all__ = [
+    'get_motion_clip',
+    'get_model_and_data',
+    'geometry',
+    'get_motion_text_mapping',
+    'retrieve_motions',
+    'encode_motions',
+    'get_datasets',
+    'clip'
+]
