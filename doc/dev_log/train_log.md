@@ -70,6 +70,6 @@ python -m src.train.train --modelname motionclip_transformer_rc_vel \
 --device 0 \
 --dataset g1_amass \
 --datapath ./data/g1_amass_db/amass_30fps_db.pt \
---folder ./exps/g1-model-posquat \
+--folder ./exps/g1-model-posvel \
 --use_g1
 ```

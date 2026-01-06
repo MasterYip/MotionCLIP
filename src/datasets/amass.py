@@ -501,10 +501,22 @@ class G1AMASS(Dataset):
             return self._body_positions[ind][frame_ix]  # (30, 3)
         return None
 
+    def _load_body_linear_velocities(self, ind, frame_ix):
+        """Load body linear velocities for G1 robot."""
+        if len(self._body_linear_velocities) > 0:
+            return self._body_linear_velocities[ind][frame_ix]
+        return None
+
     def _load_body_rotations(self, ind, frame_ix):
         """Load body rotations (quaternions) for G1 robot."""
         if len(self._body_rotations) > 0:
             return self._body_rotations[ind][frame_ix]
+        return None
+
+    def _load_body_angular_velocities(self, ind, frame_ix):
+        """Load body angular velocities for G1 robot."""
+        if len(self._body_angular_velocities) > 0:
+            return self._body_angular_velocities[ind][frame_ix]
         return None
 
 

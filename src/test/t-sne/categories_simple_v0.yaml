@@ -1,0 +1,307 @@
+# Motion and Vocabulary Categories for t-SNE Analysis
+# This file defines categories for organizing motions and vocabulary items
+
+# Motion categories: Maps category names to lists of motion text labels from the dataset
+motion_categories:
+  Walking:
+    - Walk
+    - Walking
+    - Walk forward
+    - Walking forward
+    - Walk back and forth
+    - Walking backwards
+    - Walk in circle
+    - Walking in a circle
+    - Walk around
+    - Taking a walk
+    - Power walking
+    
+  Running:
+    - running
+    - Running
+    - run
+    - run in place
+    - running in place
+    - Running on treadmill
+    - run forward
+    - running forward
+    
+  Jumping:
+    - Jump
+    - Jumping
+    - 360 degree left jump and standing and turning back
+    - 270 degree left jump and standing and turning back
+    - 210 degree left jump and turning back
+    
+  # Dancing:
+  #   - Dancing
+  #   - A-pose and dancing and transition
+    
+  Climbing:
+    - Climbing
+    - Climb stairs
+    - Walking up stairs
+    - Walking upstairs.
+    - Walk up stairs
+    - Go down the stairs
+    - Walk down stairs
+    - Walking down steps
+    
+  # Kicking:
+  #   - Kicking
+  #   - Kicking something.
+  #   - Roundhouse
+    
+  # Throwing:
+  #   - Throwing
+  #   - Throw ball
+  #   - Throwing a ball
+  #   - Throwing something.
+    
+  # Hand_Gestures:
+  #   - Wave
+  #   - Waving
+  #   - Hand gesture
+  #   - Hand action
+  #   - Hand free
+  #   - Raising hands
+  #   - 1 hand on head
+    
+  # Standing:
+  #   - Standing
+  #   - Stand up
+  #   - Balancing
+    
+  # Squatting_Bending:
+  #   - Squatting
+  #   - Bending over.
+  #   - Bowing
+    
+  # Stepping:
+  #   - One step forward.
+  #   - Step backwards
+  #   - Step Backwards.
+  #   - Stepping back
+  #   - Stepping over something.
+    
+  # Sports_Activities:
+  #   - Golf swing
+  #   - Swinging a putter on a golf course.
+  #   - Play the violin
+  #   - Playing the flute
+  #   - Riding a bike
+    
+  # Stretching:
+  #   - Stretch
+    
+  # Stomping:
+  #   - Stomping
+  #   - Stomping of foot
+    
+  # Other_Actions:
+  #   - Moving an item
+  #   - Touching objects
+  #   - Wiping something down
+  #   - Stir
+  #   - Drunk walking
+  #   - Tiptoe
+  #   - Shuffling to the right.
+
+# Vocabulary categories: Maps category names to lists of text descriptions
+vocabulary_categories:
+  Walking:
+    - Walk
+    - Walking
+    - Walk forward
+    - Walking forward
+    - Walk back and forth
+    - Walking backwards
+    - Walk in circle
+    - Walking in a circle
+    - Walk around
+    - Taking a walk
+    - Power walking
+    - a person walks forward
+    - a person walks backward
+    - a person walks to the left
+    - a person walks to the right
+    - a person is walking slowly
+    - a person is walking fast
+    - someone walks in a circle
+    - a person walks and turns around
+    - a person walks forward while curving
+    - someone is power walking
+
+  Running:
+    - running
+    - Running
+    - run
+    - run in place
+    - running in place
+    - Running on treadmill
+    - run forward
+    - running forward
+    
+  Jumping:
+    - Jump
+    - Jumping
+    - 360 degree left jump and standing and turning back
+    - 270 degree left jump and standing and turning back
+    - 210 degree left jump and turning back
+    
+  # Dancing:
+  #   - Dancing
+  #   - A-pose and dancing and transition
+    
+  Climbing:
+    - Climbing
+    - Climb stairs
+    - Walking up stairs
+    - Walking upstairs.
+    - Walk up stairs
+    - Go down the stairs
+    - Walk down stairs
+    - Walking down steps
+    
+
+  # Walking:
+  #   - a person walks forward
+  #   - a person walks backward
+  #   - a person walks to the left
+  #   - a person walks to the right
+  #   - a person is walking slowly
+  #   - a person is walking fast
+  #   - someone walks in a circle
+  #   - a person walks and turns around
+  #   - a person walks forward while curving
+  #   - someone is power walking
+    
+  # Running:
+  #   - a person runs forward
+  #   - a person is running fast
+  #   - someone is jogging
+  #   - a person runs in place
+  #   - a person sprints forward
+  #   - someone runs backward
+  #   - a person runs in circles
+  #   - someone is running on a treadmill
+    
+  # Jumping:
+  #   - a person jumps up
+  #   - a person jumps forward
+  #   - someone does a jumping jack
+  #   - a person hops on one leg
+  #   - a person does a vertical jump
+  #   - someone jumps backward
+  #   - a person does a 360 degree jump
+  #   - someone does a high jump
+    
+  # Dancing:
+  #   - a person is dancing
+  #   - someone dances to music
+  #   - a person does a dance move
+  #   - a person is breakdancing
+  #   - someone is ballet dancing
+  #   - a person dances freely
+    
+  # Climbing:
+  #   - a person climbs stairs
+  #   - someone walks up stairs
+  #   - a person walks upstairs
+  #   - someone climbs up
+  #   - a person goes down the stairs
+  #   - someone walks down stairs
+  #   - a person descends steps
+    
+  # Kicking:
+  #   - a person kicks forward
+  #   - someone kicks a ball
+  #   - a person does a high kick
+  #   - a person kicks to the side
+  #   - someone kicks backward
+  #   - a person does martial arts kicks
+  #   - someone does a roundhouse kick
+    
+  # Throwing:
+  #   - a person throws a ball
+  #   - someone throws something
+  #   - a person throws forward
+  #   - someone tosses an object
+  #   - a person throws with right hand
+  #   - someone pitches a ball
+    
+  # Hand_Movements:
+  #   - a person waves their hand
+  #   - a person raises their arms
+  #   - someone claps their hands
+  #   - a person reaches up high
+  #   - a person stretches their arms
+  #   - someone crosses their arms
+  #   - a person puts hand on head
+  #   - someone gestures with hands
+    
+  # Standing_Balancing:
+  #   - a person stands still
+  #   - someone is balancing
+  #   - a person stands up
+  #   - someone maintains balance
+  #   - a person stands in place
+    
+  # Squatting_Bending:
+  #   - a person squats down
+  #   - someone bends over
+  #   - a person bows
+  #   - someone crouches down
+  #   - a person bends forward
+  #   - someone does a squat
+    
+  # Stepping:
+  #   - a person steps forward
+  #   - someone steps backward
+  #   - a person takes a step
+  #   - someone steps to the side
+  #   - a person steps over something
+    
+  # Sports_Activities:
+  #   - a person swings a golf club
+  #   - someone plays violin
+  #   - a person plays the flute
+  #   - someone rides a bike
+  #   - a person does a golf swing
+  #   - someone plays a sport
+    
+  # Stretching:
+  #   - a person stretches
+  #   - someone stretches their arms
+  #   - a person stretches their legs
+  #   - someone does stretching exercises
+    
+  # Stomping:
+  #   - a person stomps their foot
+  #   - someone stomps on the ground
+  #   - a person stomps forward
+    
+  # Arm_Movements:
+  #   - a person moves their right arm up and down
+  #   - someone raises both arms
+  #   - a person swings their arms
+  #   - someone extends their arms
+  #   - a person moves arms in circles
+    
+  # Sitting:
+  #   - a person sits down
+  #   - a person sits on a chair
+  #   - someone sits on the ground
+  #   - a person sits cross-legged
+  #   - a person sits and stands
+  #   - someone is sitting
+    
+  # Other_Actions:
+  #   - a person wipes something down
+  #   - someone stirs something
+  #   - a person touches an object
+  #   - someone moves an item
+  #   - a person walks while drunk
+  #   - someone walks on tiptoe
+  #   - a person shuffles sideways
+  #   - someone leans forward

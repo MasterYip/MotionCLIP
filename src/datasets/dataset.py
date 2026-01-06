@@ -180,7 +180,7 @@ class Dataset(torch.utils.data.Dataset):
 
             if pose_rep == "posvel":
                 body_pos = self._load_body_positions(ind, frame_ix)
-                body_vel = self._load_body_velocities(ind, frame_ix)
+                body_vel = self._load_body_linear_velocities(ind, frame_ix)
                 ret_pos = to_torch(body_pos)
                 ret_pos = ret_pos - ret_pos[0, 0, :]  # Center at root body position of first frame
                 # Shape: [seq_len, 30, 3]
