@@ -251,6 +251,7 @@ def read_single_sequence(split_name, dataset_name, folder, seq_name, target_fps,
                     # Calculate sampling frequency
                     sampling_freq = round(fps / target_fps)
                 
+                # FIXME: Use interpolation for better resampling?
                 if sampling_freq > 1:
                     dof_pos = dof_pos[0::sampling_freq]
                     body_pos = body_pos[0::sampling_freq]
