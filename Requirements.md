@@ -7,3 +7,5 @@ proxychains pip install joblib smplx gdown chumpy-fork human_body_prior \
 git+https://github.com/openai/CLIP.git \
 # git+https://github.com/nghorbani/human_body_prior@cvpr19
 ```
+
+> WARN: setuptools 75+ has a breaking change that causes clip installation to fail. Please use `setuptools<75`.
