@@ -24,9 +24,8 @@ setup(
         'tensorboard',
         'imageio',
         'pandas',
-    ],
-    dependency_links=[
-        'git+https://github.com/openai/CLIP.git',
+        'human_body_prior',
+        'clip @ git+https://github.com/openai/CLIP.git',
     ],
     extras_require={
         'dev': [
