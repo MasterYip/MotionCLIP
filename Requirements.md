@@ -9,3 +9,8 @@ git+https://github.com/openai/CLIP.git \
 ```
 
 > WARN: setuptools 75+ has a breaking change that causes clip installation to fail. Please use `setuptools<75`.
+
+```bash
+proxychains pip install --force-reinstall --no-cache-dir 'setuptools<75'
+proxychains pip install --no-build-isolation git+https://github.com/openai/CLIP.git
+```
