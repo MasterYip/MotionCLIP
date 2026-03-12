@@ -7,7 +7,7 @@ This guide explains how to train MotionCLIP with G1 retargeted AMASS data.
 
 1. **Prepared G1 Dataset**: You need G1 retargeted AMASS data processed with `amass_parser_g1.py`:
    ```bash
-   python MotionCLIP/src/datasets/amass_parser_g1.py \
+   python MoDyeEnc/src/datasets/amass_parser_g1.py \
      --input_dir ./data/g1_retargeted_amass \
      --output_dir ./data/g1_amass_db \
      --dataset_name amass \

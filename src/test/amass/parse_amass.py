@@ -27,7 +27,7 @@ def profile_npz_file(file_path):
 
 if __name__ == "__main__":
     # Example: profile a single NPZ file
-    npz_file = "MotionCLIP/data/amass/BioMotionLab_NTroje/rub002/0000_treadmill_norm_poses_120_jpos.npz"
+    npz_file = "MoDyeEnc/data/amass/BioMotionLab_NTroje/rub002/0000_treadmill_norm_poses_120_jpos.npz"
     profile_npz_file(npz_file)
     
     # Or process multiple NPZ files in a directory
