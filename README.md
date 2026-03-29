@@ -32,23 +32,19 @@ At inference time, a single CLIP text encoder call produces `z`; the same latent
 
 ## Installation
 
-> Dependencies are shared with the rest of PegasusMoDye. If you have already set up the main environment, only the additional packages below are required.
+Requires Python 3.10.
 
 ```bash
-# Core extras (setuptools<75 required for CLIP)
-pip install --force-reinstall --no-cache-dir 'setuptools<75'
-pip install joblib smplx gdown chumpy-fork human_body_prior
-pip install --no-build-isolation git+https://github.com/openai/CLIP.git
+pip install -e .
 ```
 
-> **China mirror users:** prefix pip commands with the Aliyun index:
-> `pip install ... --index-url https://mirrors.aliyun.com/pypi/simple/`
+> **China mirror users:** `pip config set global.index-url https://mirrors.aliyun.com/pypi/simple/`
 
-### SMPL body models (needed for AMASS data pre-processing)
+### SMPL body models (needed for data pre-processing)
 
 ```bash
 bash prepare/download_smpl_files.sh          # SMPL neutral model
-# Then download SMPL+H from https://mano.is.tue.mpg.de/ → place in ./models/smplh
+# Download SMPL+H from https://mano.is.tue.mpg.de/ → place in ./models/smplh
 ```
 
 These model files are also available from the project's Hugging Face repository (see [Pretrained Checkpoint](#pretrained-checkpoint)).
@@ -57,7 +53,9 @@ These model files are also available from the project's Hugging Face repository 
 
 ## Dataset Construction for Unitree G1
 
-MoDyeEnc trains on G1-retargeted AMASS motion-capture data.
+<!-- TODO: add G1 retargeted dataset url -->
+
+MoDyeEnc trains on [G1-retargeted AMASS](TODO) motion-capture data.
 The raw AMASS sequences are retargeted onto the G1 skeleton (producing `_jpos.npz` files), then parsed into a unified `.pt` database.
 
 ### 1. Obtain G1-retargeted AMASS data
@@ -74,7 +72,11 @@ Retargeted files follow the naming `<sequence>_jpos.npz` and contain:
 | `body_angular_velocities` | `(T, 20, 3)` | Body angular velocities |
 
 Place the retargeted dataset under `./data/g1_retargeted_amass/`.
-Optionally place [BABEL](https://babel.is.tue.mpg.de/) labels under `./data/babel_v1.0_release/` to enable text supervision.
+
+The parser also requires two external resources:
+
+- **BABEL labels** — download from [babel.is.tue.mpg.de](https://babel.is.tue.mpg.de/) → place in `./data/babel_v1.0_release/`
+- **Rendered AMASS images** — download from [Google Drive](https://drive.google.com/file/d/1F8VLY4AC2XPaV3DqKZefQJNWn4KY2z_c/view?usp=sharing) → extract to `./data/render/`
 
 ### 2. Parse into training database
 
