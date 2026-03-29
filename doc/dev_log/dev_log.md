@@ -1,3 +1,8 @@
+### 20260329 README
+
+@MoDyeEnc/README_old2.md is the modified motionclip repo readme. I hope you write a new README.md  for MoDyeEnc sub repo (as part of PegasusModye)  The readme should contain the instruction to consturct dataset for g1, training command for g1_model_clip_xyz, and some demos. You should mention that the code is adapted from motionclip and is modified especially for unitree g1. Besides, a pretrained checkpoint is offered, you can see @scripts/hf_manifest.yaml .
+ About how this Enc is used, you can refer to @README.md  @doc/hf_model_card.md  and other readme files in the whole repo 
+
 
 ### Motion2Text
 

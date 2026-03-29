@@ -1,225 +1,280 @@
-# MotionCLIP
+# MoDyeEnc
 
-Official Pytorch implementation of the paper [**"MotionCLIP: Exposing Human Motion Generation to CLIP Space"**](http://arxiv.org/abs/2203.08063).
+Motion encoder for the [PegasusMoDye](../README.md) project.
+Maps motion sequences and natural-language descriptions into a shared **512-dim CLIP latent space**, providing semantic conditioning for the PDPlanner diffusion policy.
 
-Please visit our [**webpage**](https://guytevet.github.io/motionclip-page/) for more details.
+Adapted from [MotionCLIP](https://guytevet.github.io/motionclip-page/) and modified for the **Unitree G1** robot — replacing SMPL-based kinematics with G1 retargeted body positions and joint angles.
 
-![teaser](visuals/clouds_white_bg.png)
+---
 
-#### Bibtex
-If you find this code useful in your research, please cite:
-
-```
-@article{tevet2022motionclip,
-title={MotionCLIP: Exposing Human Motion Generation to CLIP Space},
-author={Tevet, Guy and Gordon, Brian and Hertz, Amir and Bermano, Amit H and Cohen-Or, Daniel},
-journal={arXiv preprint arXiv:2203.08063},
-year={2022}
-}
-```
-
-## Updates
-
-**31/AUG/22** - Training loop reproduces paper results. (a bug fix)
-
-**11/MAY/22** - First release.
-
-## Getting started
-### 1. Create conda environment
+## Role in PegasusMoDye
 
 ```
-conda env create -f environment.yml
-conda activate motionclip
+Text prompt ("walk forward")
+        │
+        ▼
+ ┌─────────────┐
+ │  MoDyeEnc   │  Encodes text / motion clips → 512-dim latent z
+ └──────┬──────┘
+        │  cond z
+        ▼
+ ┌────────────────────┐
+ │  PDPlanner         │  Co-diffuses state + action trajectories conditioned on z
+ └────────────────────┘
+        │  joint PD targets (29 DoF)
+        ▼
+     Unitree G1
 ```
 
-The code was tested on Python 3.8 and PyTorch 1.8.1.
+At inference time, a single CLIP text encoder call produces `z`; the same latent can also be extracted from a reference motion clip for imitation-style conditioning.
 
-### 2. Download data
+---
 
-**NEW! Download the parsed data directly**
+## Installation
 
-[Parsed AMASS dataset](https://drive.google.com/drive/folders/18guyyud1iobxASZxoGe-798mOxNBKGWf?usp=sharing) -> `./data/amass_db`
+> Dependencies are shared with the rest of PegasusMoDye. If you have already set up the main environment, only the additional packages below are required.
 
-<details>
-  <summary><b>If you prefer to parse the data yourself, follow this:</b></summary>
-
-  Download and unzip the above datasets and place them correspondingly:
-* [AMASS](https://amass.is.tue.mpg.de/) -> `./data/amass` (Download the SMPL+H version for each dataset separately, please note to download ALL the dataset in AMASS website)
-* [BABEL](https://babel.is.tue.mpg.de/) -> `./data/babel_v1.0_release`
-* [Rendered AMASS images](https://drive.google.com/file/d/1F8VLY4AC2XPaV3DqKZefQJNWn4KY2z_c/view?usp=sharing) -> `./data/render`
-
-  Then, process the three datasets into a unified dataset with `(text, image, motion)` triplets:
-
-To parse acording to the AMASS split (for all applications except action recognition), run:
 ```bash
-python -m src.datasets.amass_parser --dataset_name amass
+# Core extras (setuptools<75 required for CLIP)
+pip install --force-reinstall --no-cache-dir 'setuptools<75'
+pip install joblib smplx gdown chumpy-fork human_body_prior
+pip install --no-build-isolation git+https://github.com/openai/CLIP.git
 ```
-G1 AMASS
+
+> **China mirror users:** prefix pip commands with the Aliyun index:
+> `pip install ... --index-url https://mirrors.aliyun.com/pypi/simple/`
+
+### SMPL body models (needed for AMASS data pre-processing)
+
+```bash
+bash prepare/download_smpl_files.sh          # SMPL neutral model
+# Then download SMPL+H from https://mano.is.tue.mpg.de/ → place in ./models/smplh
+```
+
+These model files are also available from the project's Hugging Face repository (see [Pretrained Checkpoint](#pretrained-checkpoint)).
+
+---
+
+## Dataset Construction for Unitree G1
+
+MoDyeEnc trains on G1-retargeted AMASS motion-capture data.
+The raw AMASS sequences are retargeted onto the G1 skeleton (producing `_jpos.npz` files), then parsed into a unified `.pt` database.
+
+### 1. Obtain G1-retargeted AMASS data
+
+Retargeted files follow the naming `<sequence>_jpos.npz` and contain:
+
+| Field | Shape | Description |
+|---|---|---|
+| `dof_positions` | `(T, 29)` | Joint angles (rad) |
+| `dof_velocities` | `(T, 29)` | Joint velocities (rad/s) |
+| `body_positions` | `(T, 20, 3)` | Body link positions in world frame |
+| `body_rotations` | `(T, 20, 3)` | Body orientations (axis-angle) |
+| `body_linear_velocities` | `(T, 20, 3)` | Body linear velocities |
+| `body_angular_velocities` | `(T, 20, 3)` | Body angular velocities |
+
+Place the retargeted dataset under `./data/g1_retargeted_amass/`.
+Optionally place [BABEL](https://babel.is.tue.mpg.de/) labels under `./data/babel_v1.0_release/` to enable text supervision.
+
+### 2. Parse into training database
+
+Run from the `MoDyeEnc/` directory:
+
 ```bash
 python src/datasets/g1_amass_parser.py \
-    --input_dir ./data/amass \
+    --input_dir  ./data/g1_retargeted_amass \
     --output_dir ./data/g1_amass_db \
     --dataset_name amass \
     --babel_dir ./data/babel_v1.0_release \
     --target_fps 30
 ```
 
-**Only if** you intend to use **Action Recognition**, run also:
-```bash
-python -m src.datasets.amass_parser --dataset_name babel
+This produces:
+```
+data/g1_amass_db/
+  amass_30fps_train.pt
+  amass_30fps_vald.pt
+  amass_30fps_test.pt
 ```
 
-</details>
+The train / validation / test split follows the standard AMASS partition:
 
+| Split | Sequences |
+|---|---|
+| train | BioMotionLab_NTroje, Eyes_Japan_Dataset, TotalCapture, KIT, ACCAD, CMU, MPI_Limits, TCD_handMocap, EKUT |
+| vald | HumanEva, MPI_HDM05, SFU, MPI_mosh |
+| test | Transitions_mocap, SSM_synced |
 
-### 3. Download the SMPL body model
+**Quick sanity check:**
 
 ```bash
-bash prepare/download_smpl_files.sh
-```
-This will download the SMPL neutral model from this [**github repo**](https://github.com/classner/up/blob/master/models/3D/basicModel_neutral_lbs_10_207_0_v1.0.0.pkl) and additionnal files.
-
-In addition, download the **Extended SMPL+H model** (used in AMASS project) from [MANO](https://mano.is.tue.mpg.de/), and place it in `./models/smplh`.
-
-
-## Using the pretrained model
-
-First, [download the model](https://drive.google.com/file/d/1VTIN0kJd2-0NW1sKckKgXddwl4tFZVDp/view?usp=sharing) and place it at `./exps/paper-model`
-
-### 1. Text-to-Motion
-
-To reproduce paper results, run:
-```bash
- python -m src.visualize.text2motion ./exps/paper-model/checkpoint_0100.pth.tar --input_file assets/paper_texts.txt
+python -c "
+from src.datasets.amass import AMASS
+ds = AMASS(datapath='./data/g1_amass_db/amass_30fps_db.pt',
+           split='train', use_g1=True, num_frames=60, pose_rep='xyz')
+print('Dataset size:', len(ds))
+print('Sample shape:', ds[0]['inp'].shape)   # expected: [20, 3, 60]
+"
 ```
 
-To run MotionCLIP on your own texts, create a text file, with each line depicts a different text input (see `paper_texts.txt` as a reference) and point to it with `--input_file` instead.
+---
 
+## Training
 
-### 2. Motion-to-Text
+All commands are run from inside the `MoDyeEnc/` directory.
 
-To retrieve text descriptions from motions using CLIP, run:
-```bash
-python -m src.visualize.motion2text ./exps/paper-model/checkpoint_0100.pth.tar --input_file assets/paper_motion2text.csv
-```
+### G1 model — XYZ representation (recommended)
 
-This feature:
-* Retrieves motions from the dataset based on their textual labels
-* Encodes the motions into latent features using the MotionCLIP encoder
-* Uses CLIP to find the most similar text descriptions from a comprehensive vocabulary
-* Prints the top-5 predicted text descriptions with confidence scores
+This is the configuration used to produce the released `g1-model-xyz-clip` checkpoint:
 
-To run with your own motions, create a CSV file with a `motion_text` column containing textual labels of motions available in the dataset (see `paper_motion2text.csv` as a reference).
-
-
-### 3. Vector Editing
-
-To reproduce paper results, run:
-```bash
- python -m src.visualize.motion_editing ./exps/paper-model/checkpoint_0100.pth.tar --input_file assets/paper_edits.csv
-```
-
-To gain the input motions, we support two modes:
-* `data` - Retrieve motions from train/validation sets, according to their textual label. On it first run, `src.visualize.motion_editing` generates a file containing a list of all textual labels. You can look it up and choose motions for your own editing.
-* `text` - The inputs are free texts, instead of motions. We use CLIP text encoder to get CLIP representations, perform vector editing, then use MotionCLIP decoder to output the edited motion.
-
-To run MotionCLIP on your own editing, create a csv file, with each line depicts a different edit (see `paper_edits.csv` as a reference) and point to it with `--input_file` instead.
-
-### 4. Interpolation
-
-To reproduce paper results, run:
-```bash
- python -m src.visualize.motion_interpolation ./exps/paper-model/checkpoint_0100.pth.tar --input_file assets/paper_interps.csv
-```
-
-To gain the input motions, we use the `data` mode described earlier.
-
-To run MotionCLIP on your own interpolations, create a csv file, with each line depicts a different interpolation (see `paper_interps.csv` as a reference) and point to it with `--input_file` instead.
-
-
-### 5. Action Recognition
-
-For action recognition, we use a model trained on text class names. [Download](https://drive.google.com/file/d/1koQMhpqmoffIB0C0P99a8l23YLGfthJ4/view?usp=sharing) and place it at `./exps/classes-model`.
- 
-```bash
-python -m src.utils.action_classifier ./exps/classes-model/checkpoint_0200.pth.tar
-```
-
-
-
-## Train your own
-
-~~**NOTE (11/MAY/22):** 
-The paper model is not perfectly reproduced using this code. We are working to resolve this issue. 
-The trained model [checkpoint](https://drive.google.com/file/d/1VTIN0kJd2-0NW1sKckKgXddwl4tFZVDp/view?usp=sharing) we provide does reproduce results.~~ **(Resolved 31/AUG/22)**
-
-To reproduce `paper-model` run:
-```bash
-python -m src.train.train --clip_text_losses cosine --clip_image_losses cosine --pose_rep rot6d \
---lambda_vel 100 --lambda_rc 100 --lambda_rcxyz 100 \
---jointstype vertices --batch_size 20 --num_frames 60 --num_layers 8 \
---lr 0.0001 --glob --translation --no-vertstrans --latent_dim 512 --num_epochs 100 --snapshot 10 \
---device <GPU DEVICE ID> \
---dataset amass \
---datapath ./data/amass_db/amass_30fps_db.pt \
---folder ./exps/my-paper-model
-```
-```bash
-python -m src.train.train --clip_text_losses cosine --clip_image_losses cosine --pose_rep rot6d \
---lambda_vel 100 --lambda_rc 100 --lambda_rcxyz 100 \
---jointstype vertices --batch_size 20 --num_frames 60 --num_layers 8 \
---lr 0.0001 --glob --translation --no-vertstrans --latent_dim 512 --num_epochs 100 --snapshot 10 \
---device 0 \
---dataset amass \
---datapath ./data/amass_db/amass_30fps_db.pt \
---folder ./exps/my-paper-model
-```
-
-G1 AMASS Test1: 
-```bash
-python -m src.train.train --clip_text_losses cosine --clip_image_losses cosine --pose_rep xyz \
---lambda_vel 100 --lambda_rc 100 --lambda_rcxyz 100 \
---jointstype vertices --batch_size 20 --num_frames 60 --num_layers 8 \
---lr 0.0001 --glob --translation --no-vertstrans --latent_dim 512 --num_epochs 100 --snapshot 10 \
---device 0 \
---dataset g1_amass \
---datapath ./data/g1_amass_db/amass_30fps_db.pt \
---folder ./exps/g1-model5 \
---use_g1
-```
-
-G1 AMASS Test2: 
 ```bash
 python -m src.train.train --modelname motionclip_transformer_rc_vel \
---clip_text_losses cosine --clip_image_losses cosine --pose_rep rot6d \
---clip_lambda_cosine 1.0 \
+--clip_text_losses cosine --pose_rep xyz \
+--clip_lambda_cosine 5.0 \
+--clip_training text \
 --lambda_vel 100 --lambda_rc 100 --lambda_rcxyz 100 \
 --jointstype vertices --batch_size 20 --num_frames 60 --num_layers 8 \
 --lr 0.0001 --glob --translation --no-vertstrans --latent_dim 512 --num_epochs 100 --snapshot 10 \
 --device 0 \
 --dataset g1_amass \
 --datapath ./data/g1_amass_db/amass_30fps_db.pt \
---folder ./exps/g1-model5 \
+--folder ./exps/g1-model-xyz-clip \
 --use_g1
 ```
 
-To reproduce `classes-model` run:
+Key flags specific to G1:
+
+| Flag | Value | Notes |
+|---|---|---|
+| `--dataset g1_amass` | — | Loads G1AMASS dataset class |
+| `--use_g1` | — | Replaces SMPL FK with G1 pass-through |
+| `--pose_rep xyz` | — | Uses `body_positions` directly; no rotation conversion needed |
+| `--latent_dim 512` | — | Must match CLIP ViT-B/32 embedding dimension |
+
+### Convenience script
+
 ```bash
-python -m src.train.train --clip_text_losses cosine --clip_image_losses cosine --pose_rep rot6d \
---lambda_vel 95 --lambda_rc 95 --lambda_rcxyz 95 \
---jointstype vertices --batch_size 20 --num_frames 60 --num_layers 8 \
---lr 0.0001 --glob --translation --no-vertstrans --latent_dim 512 --num_epochs 200 --snapshot 10 \
---device <GPU DEVICE ID> \
---dataset babel \
---datapath ./data/amass_db/babel_30fps_db.pt \
---folder ./exps/my-classes-model
+#!/bin/bash
+DATA_PATH="./data/g1_amass_db/amass_30fps_db.pt"
+OUTPUT_DIR="./exps/g1-model-xyz-clip-$(date +%Y%m%d-%H%M%S)"
+
+python -m src.train.train \
+  --clip_text_losses cosine --clip_image_losses cosine \
+  --pose_rep xyz \
+  --lambda_vel 100 --lambda_rc 100 --lambda_rcxyz 100 \
+  --jointstype vertices --batch_size 20 --num_frames 60 --num_layers 8 \
+  --lr 0.0001 --glob --translation --no-vertstrans \
+  --latent_dim 512 --num_epochs 100 --snapshot 10 \
+  --device 0 \
+  --dataset g1_amass --datapath $DATA_PATH \
+  --folder $OUTPUT_DIR --use_g1
+
+echo "Done → $OUTPUT_DIR"
 ```
 
-## Acknowledgment
+Checkpoints are saved every 10 epochs as `checkpoint_XXXX.pth.tar` inside `--folder`.
 
-The code of the transformer model and the dataloader are based on [ACTOR](https://github.com/Mathux/ACTOR) repository. 
+---
+
+## Pretrained Checkpoint
+
+A pretrained checkpoint is available from the project's Hugging Face repository:
+
+```bash
+pip install huggingface_hub
+
+# Download MoDyeEnc checkpoint only
+python scripts/hf_download.py --filter checkpoints/modyeenc
+```
+
+The checkpoint is stored at `checkpoints/modyeenc/` in the HF repo
+(local mirror: `MoDyeEnc/exps/g1-model-xyz-clip/`).
+
+SMPL body model files required for data preprocessing are also available:
+
+```bash
+python scripts/hf_download.py --filter assets/smpl_models
+```
+
+---
+
+## Demos
+
+### Text-to-latent (inference)
+
+Encode a text prompt and retrieve the closest motion from the training set:
+
+```bash
+python -m src.visualize.text2motion \
+  ./exps/g1-model-xyz-clip/checkpoint_0100.pth.tar \
+  --input_file assets/paper_texts.txt
+```
+
+Create `assets/paper_texts.txt` with one prompt per line, e.g.:
+```
+walk forward
+wave left hand
+jump in place
+turn around
+```
+
+### Motion-to-text retrieval
+
+Given a reference motion, retrieve the most likely text descriptions via CLIP:
+
+```bash
+python -m src.visualize.motion2text \
+  ./exps/g1-model-xyz-clip/checkpoint_0100.pth.tar \
+  --input_file assets/paper_motion2text.csv
+```
+
+### Latent interpolation
+
+Smoothly interpolate between two motion latents:
+
+```bash
+python -m src.visualize.motion_interpolation \
+  ./exps/g1-model-xyz-clip/checkpoint_0100.pth.tar \
+  --input_file assets/paper_interps.csv
+```
+
+---
+
+## Architecture Notes
+
+MoDyeEnc is a **transformer autoencoder** aligned to CLIP space via contrastive losses:
+
+- **Encoder**: causal transformer over `[njoints=20, nfeats=3, nframes=60]` G1 body-position sequences → 512-dim latent `z`
+- **Decoder**: mirrors encoder; reconstructed motions supervised by reconstruction + velocity + xyz losses
+- **CLIP alignment**: cosine similarity loss between `z` and CLIP text/image embeddings (frozen ViT-B/32)
+
+G1-specific changes versus the original MotionCLIP:
+
+| Component | Original | G1 modification |
+|---|---|---|
+| Data | SMPL parameters (`thetas`) | G1 retargeted `body_positions` (`_jpos.npz`) |
+| FK | `Rotation2xyz` (SMPL model) | `G1ToXyz` pass-through for `pose_rep=xyz` |
+| Joints | 23 SMPL joints | 20 G1 body links |
+| Input features | 138 (23 × rot6d) | 60 (20 × xyz) |
+| Body model files | SMPL `.pkl` required | Not needed at training time |
+
+---
+
+## Acknowledgement
+
+This code is adapted from [MotionCLIP](https://github.com/GuyTevet/motion-clip) by Tevet et al. (ECCV 2022).
+The transformer architecture originates from [ACTOR](https://github.com/Mathux/ACTOR).
+
+```bibtex
+@article{tevet2022motionclip,
+  title   = {MotionCLIP: Exposing Human Motion Generation to CLIP Space},
+  author  = {Tevet, Guy and Gordon, Brian and Hertz, Amir and Bermano, Amit H and Cohen-Or, Daniel},
+  journal = {arXiv preprint arXiv:2203.08063},
+  year    = {2022}
+}
+```
 
 ## License
-This code is distributed under an [MIT LICENSE](LICENSE).
 
-Note that our code depends on other libraries, including CLIP, SMPL, SMPL-X, PyTorch3D, and uses datasets which each have their own respective licenses that must also be followed.
+Distributed under the [MIT License](LICENSE), following the original MotionCLIP.
+Dependencies (CLIP, SMPL, PyTorch3D) carry their own respective licenses.
