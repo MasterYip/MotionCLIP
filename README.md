@@ -55,7 +55,7 @@ These model files are also available from the project's Hugging Face repository 
 
 <!-- TODO: add G1 retargeted dataset url -->
 
-MoDyeEnc trains on [G1-retargeted AMASS](TODO) motion-capture data.
+MoDyeEnc trains on [G1-retargeted AMASS](https://huggingface.co/datasets/ember-lab-berkeley/AMASS_Retargeted_for_G1) motion-capture data.
 The raw AMASS sequences are retargeted onto the G1 skeleton (producing `_jpos.npz` files), then parsed into a unified `.pt` database.
 
 ### 1. Obtain G1-retargeted AMASS data
