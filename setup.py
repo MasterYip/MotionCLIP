@@ -7,7 +7,7 @@ setup(
     author='MotionCLIP Authors',
     packages=find_packages(),
     python_requires='>=3.8',
-    setup_requires=['setuptools<83'],
+    setup_requires=['setuptools<=83'],
     install_requires=[
         'torch>=1.7.0',
         'torchvision',
